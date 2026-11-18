@@ -148,6 +148,8 @@ export type DiagramGroup = {
   description?: string;
   /** `box`: los nodos se reparten dentro de la caja en una rejilla lo más cuadrada posible */
   layout?: 'box';
+  /** Pintar la caja aunque envuelva a un solo nodo (por defecto no se pinta) */
+  explicit?: boolean;
 };
 
 /** Tipos incluidos por un diagrama, sumando `include` y la forma abreviada `types` */
@@ -235,6 +237,7 @@ export const ZDiagramModel = z.object({
         color: z.string().optional(),
         description: z.string().optional(),
         layout: z.enum(['box']).optional(),
+        explicit: z.boolean().optional(),
       }),
     )
     .optional(),

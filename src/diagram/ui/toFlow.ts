@@ -140,7 +140,8 @@ export function toFlow(model: ViewModel, palette: PaletteInterface): { nodes: Fl
       segmentOf.set(id, key);
       prev = b;
     }
-    return [...segments].map(([key, ids]) => {
+    // Una caja con un solo nodo no aporta nada: sólo se pinta si el grupo es `explicit`
+    return [...segments].filter(([, ids]) => ids.length > 1 || g.explicit).map(([key, ids]) => {
       const bs = ids.map((id) => boxes.get(id)!);
       const x1 = Math.min(...bs.map((b) => b.x)) - GROUP_PAD;
       const y1 = Math.min(...bs.map((b) => b.y)) - GROUP_TOP;

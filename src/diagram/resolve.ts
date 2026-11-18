@@ -62,7 +62,15 @@ export type ViewModel = {
   warnings: string[];
 };
 
-export type ViewGroup = { id: string; name: string; color?: string; description?: string; layout?: 'box'; nodeIds: string[] };
+export type ViewGroup = {
+  id: string;
+  name: string;
+  color?: string;
+  description?: string;
+  layout?: 'box';
+  explicit?: boolean;
+  nodeIds: string[];
+};
 
 /** Tipo de paleta interno para los nodos kind=diagram */
 export const SUBDIAGRAM_TYPE = 'subdiagram';
@@ -315,7 +323,7 @@ function resolveGroups(groups: DiagramGroup[], nodes: ViewNode[]): ViewGroup[] {
     const types = new Set(g.types);
     const nodeIds = nodes.filter((n) => !taken.has(n.id) && types.has(n.type)).map((n) => n.id);
     nodeIds.forEach((id) => taken.add(id));
-    return nodeIds.length ? [{ id: `group:${i}`, name: g.name, color: g.color, description: g.description, layout: g.layout, nodeIds }] : [];
+    return nodeIds.length ? [{ id: `group:${i}`, name: g.name, color: g.color, description: g.description, layout: g.layout, explicit: g.explicit, nodeIds }] : [];
   });
 }
 

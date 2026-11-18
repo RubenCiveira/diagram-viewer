@@ -227,12 +227,13 @@ Para los selectores por tipo:
 - Los nodos declarados en el diagrama se pintan siempre.
 - `"types": ["a", "b"]` se sigue aceptando como forma abreviada de `"include": [{ "type": "a" }, { "type": "b" }]`.
 
-`groups` dibuja una caja con su nombre (`name`) alrededor de los nodos de sus tipos (`types`), con `color`, `description` y `layout` opcionales. Detalles:
+`groups` dibuja una caja con su nombre (`name`) alrededor de los nodos de sus tipos (`types`), con `color`, `description`, `layout` y `explicit` opcionales. Detalles:
 
 - Si un nodo encaja en varios grupos, va al primero.
 - Las flechas tienen preferencia: primero cada dependencia lleva su destino a la siguiente columna y cada uso lo coloca debajo. Después, dentro de cada columna, los miembros de un grupo se colocan seguidos y separados de los demás.
 - `"layout": "box"` reparte los nodos de la caja en una rejilla lo más cuadrada posible (`ceil(√n)` columnas: 4 → 2×2, 5 → 3+2) en vez de en una sola columna. La columna se ensancha lo necesario.
-- Si las flechas reparten un grupo entre varias columnas, cada columna tiene su propia caja con el nombre del grupo (en el ejemplo, Login, que la shell usa, va en una caja «Internal» bajo la shell).
+- Si las flechas reparten un grupo entre varias columnas, cada columna tiene su propia caja con el nombre del grupo.
+- Una caja que envolvería a un solo nodo no se pinta (en el ejemplo, Login, que queda solo bajo la shell), salvo que el grupo tenga `"explicit": true`.
 - Al arrastrar la caja se mueven sus nodos; al arrastrar un nodo hacia fuera, la caja crece.
 
 Un subdiagrama definido dentro usa el catálogo de su diagrama raíz y puede contener a su vez otros (`fichero::a::b`).
