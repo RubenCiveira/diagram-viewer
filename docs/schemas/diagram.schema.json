@@ -1,0 +1,487 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "diagram.schema.json",
+  "title": "Diagrama del visor",
+  "type": "object",
+  "properties": {
+    "version": {
+      "default": "1.0",
+      "description": "Versión del formato: \"1.0\".",
+      "type": "string"
+    },
+    "title": {
+      "description": "Título de la cabecera y de las migas de pan.",
+      "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripción del diagrama. En Markdown."
+    },
+    "direction": {
+      "description": "Dirección del autolayout: LR (izquierda→derecha, defecto) o TB (arriba→abajo).",
+      "type": "string",
+      "enum": [
+        "LR",
+        "TB"
+      ]
+    },
+    "include": {
+      "description": "Selectores de nodos del catálogo que pintar.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "Incluye todos los nodos del catálogo de este tipo (texto libre).",
+            "type": "string",
+            "examples": [
+              "actor-user",
+              "api",
+              "database",
+              "ext-mfe-component",
+              "ext-microfront",
+              "externalService",
+              "externalSoap",
+              "externalTransaction",
+              "gateway",
+              "gatewayProxy",
+              "microFront",
+              "microservice",
+              "remoteConfig",
+              "remoteOAuth",
+              "shellUi"
+            ]
+          },
+          "ref": {
+            "description": "Incluye este nodo del catálogo (\"$self\" dentro de una plantilla).",
+            "type": "string"
+          },
+          "dependencies": {
+            "description": "Con ref: sus dependencias que encajen con \"tipoDeRelación/tipoDeNodo\" (* = cualquiera).",
+            "type": "string"
+          },
+          "uses": {
+            "description": "Con ref: sus usos que encajen con \"tipoDeRelación/tipoDeNodo\".",
+            "type": "string"
+          },
+          "incoming": {
+            "description": "Con ref: relaciones que le llegan que encajen con \"tipoDeRelación/tipoDeNodo\".",
+            "type": "string"
+          },
+          "diagram": {
+            "description": "Plantilla: cada nodo incluido por este selector abre un subdiagrama con \"$self\" = ese nodo.",
+            "allOf": [
+              {
+                "$ref": "#"
+              }
+            ]
+          }
+        },
+        "description": "Selector de nodos del catálogo: por type o por ref.",
+        "additionalProperties": false,
+        "anyOf": [
+          {
+            "required": [
+              "type"
+            ]
+          },
+          {
+            "required": [
+              "ref"
+            ]
+          }
+        ]
+      }
+    },
+    "types": {
+      "description": "Obsoleto: forma abreviada de include por tipo.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "groups": {
+      "description": "Cajas que agrupan nodos por tipo.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Título de la caja."
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "examples": [
+                "actor-user",
+                "api",
+                "database",
+                "ext-mfe-component",
+                "ext-microfront",
+                "externalService",
+                "externalSoap",
+                "externalTransaction",
+                "gateway",
+                "gatewayProxy",
+                "microFront",
+                "microservice",
+                "note",
+                "remoteConfig",
+                "remoteOAuth",
+                "shellUi"
+              ]
+            },
+            "description": "Tipos de nodo que entran en la caja (texto libre)."
+          },
+          "color": {
+            "description": "Color de acento (#rrggbb).",
+            "type": "string"
+          },
+          "description": {
+            "description": "Texto al pasar el ratón.",
+            "type": "string"
+          },
+          "layout": {
+            "description": "box: rejilla cuadrada. Sin él, en columna.",
+            "type": "string",
+            "enum": [
+              "box"
+            ]
+          },
+          "explicit": {
+            "description": "true: pinta la caja aunque tenga un solo nodo.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "types"
+        ],
+        "description": "Caja que agrupa nodos por tipo.",
+        "additionalProperties": false
+      }
+    },
+    "nodes": {
+      "default": [],
+      "description": "Nodos declarados.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identificador único dentro del diagrama. Lo usan las aristas (source/target)."
+          },
+          "kind": {
+            "default": "node",
+            "description": "\"ref\": nodo del catálogo. \"diagram\": abre otro diagrama. \"node\": nodo solo de este diagrama.",
+            "type": "string",
+            "enum": [
+              "ref",
+              "diagram",
+              "node"
+            ]
+          },
+          "type": {
+            "description": "Tipo del nodo. kind=node: obligatorio. kind=ref: sobrescribe el del catálogo. Texto libre: los tipos de la paleta tienen icono y ficha propios; cualquier otro se pinta como nodo genérico.",
+            "type": "string",
+            "examples": [
+              "actor-user",
+              "api",
+              "database",
+              "ext-mfe-component",
+              "ext-microfront",
+              "externalService",
+              "externalSoap",
+              "externalTransaction",
+              "gateway",
+              "gatewayProxy",
+              "microFront",
+              "microservice",
+              "note",
+              "remoteConfig",
+              "remoteOAuth",
+              "shellUi"
+            ]
+          },
+          "ref": {
+            "description": "kind=ref: id del nodo en el catálogo de la carpeta.",
+            "type": "string"
+          },
+          "file": {
+            "description": "kind=diagram: fichero del subdiagrama, relativo a este diagrama (\"/\" = raíz).",
+            "type": "string"
+          },
+          "diagram": {
+            "description": "kind=diagram: el subdiagrama definido aquí mismo (alternativa a file).",
+            "allOf": [
+              {
+                "$ref": "#"
+              }
+            ]
+          },
+          "expand": {
+            "description": "kind=ref: atajo de reglas. node (defecto): sin relaciones. config: sus dependencias config. all: todas.",
+            "type": "string",
+            "enum": [
+              "node",
+              "config",
+              "all"
+            ]
+          },
+          "outgoing": {
+            "description": "kind=ref: relaciones salientes a incluir (se suman a expand).",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "description": "Tipo(s) de relación que incluye la regla (config, call…). Sin él, cualquiera.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
+                },
+                "import": {
+                  "description": "true: añade el nodo del otro extremo si no está. false (defecto): solo pinta la relación si ya está.",
+                  "type": "boolean"
+                }
+              },
+              "description": "Regla para traer relaciones del catálogo al expandir una referencia.",
+              "additionalProperties": false
+            }
+          },
+          "incoming": {
+            "description": "kind=ref: relaciones entrantes a incluir (se suman a expand).",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "description": "Tipo(s) de relación que incluye la regla (config, call…). Sin él, cualquiera.",
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
+                },
+                "import": {
+                  "description": "true: añade el nodo del otro extremo si no está. false (defecto): solo pinta la relación si ya está.",
+                  "type": "boolean"
+                }
+              },
+              "description": "Regla para traer relaciones del catálogo al expandir una referencia.",
+              "additionalProperties": false
+            }
+          },
+          "name": {
+            "description": "Nombre visible.",
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "description": "Descripción para la ficha. En Markdown."
+          },
+          "props": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {},
+            "description": "Propiedades del tipo de nodo o de la relación (ver la guía, §5). Se admiten claves extra."
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "x",
+              "y"
+            ],
+            "description": "Posición fija en el lienzo. Opcional: sin ella, el visor coloca el nodo automáticamente.",
+            "additionalProperties": false
+          },
+          "errors": {
+            "description": "Errores a marcar en el nodo (rojo).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warns": {
+            "description": "Avisos a marcar en el nodo (naranja).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "width": {
+            "description": "Ancho fijo de la forma, en px.",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "height": {
+            "description": "Alto fijo de la forma, en px.",
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "kind"
+        ],
+        "description": "Nodo de un diagrama.",
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "ref"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "ref"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "node"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "type"
+              ]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "diagram"
+                }
+              }
+            },
+            "then": {
+              "anyOf": [
+                {
+                  "required": [
+                    "file"
+                  ]
+                },
+                {
+                  "required": [
+                    "diagram"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "edges": {
+      "default": [],
+      "description": "Aristas propias del diagrama.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "id de un nodo de este diagrama."
+          },
+          "target": {
+            "type": "string",
+            "description": "id de un nodo de este diagrama."
+          },
+          "sourceHandle": {
+            "description": "Avanzado: \"out\" (lateral) o \"children\" (abajo).",
+            "type": "string"
+          },
+          "targetHandle": {
+            "description": "Avanzado: \"in\" (lateral) o \"parent\" (arriba).",
+            "type": "string"
+          },
+          "kind": {
+            "description": "parentChild: de padre a hijo, hacia abajo.",
+            "type": "string",
+            "enum": [
+              "lateral",
+              "parentChild"
+            ]
+          },
+          "uses": {
+            "description": "true: uso (acoplamiento fuerte), hacia abajo y destacado.",
+            "type": "boolean"
+          },
+          "type": {
+            "description": "Tipo de relación (texto libre: config, call…).",
+            "type": "string"
+          },
+          "label": {
+            "description": "Texto sobre la flecha.",
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "description": "Descripción para la ficha de la arista. En Markdown."
+          },
+          "technology": {
+            "description": "Tecnología; etiqueta si no hay label.",
+            "type": "string"
+          },
+          "props": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {},
+            "description": "Propiedades del tipo de nodo o de la relación (ver la guía, §5). Se admiten claves extra."
+          }
+        },
+        "required": [
+          "source",
+          "target"
+        ],
+        "description": "Arista propia del diagrama. Sin id: se calcula como from:<source>-to:<target>.",
+        "additionalProperties": false
+      }
+    },
+    "$schema": {
+      "type": "string",
+      "description": "Ruta a este schema (opcional, para editores y validadores)."
+    }
+  },
+  "description": "Diagrama del visor: una vista sobre el catálogo de su carpeta.",
+  "$comment": "Generado con «pnpm run schemas». No editar.",
+  "additionalProperties": false
+}

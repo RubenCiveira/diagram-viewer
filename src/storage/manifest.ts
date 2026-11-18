@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { normPath } from '../diagram/paths';
+import { ZManifest } from '../diagram/model';
 import { FileNotFoundError, type DiagramEntry, type Repository } from './Repository';
 
 /**
@@ -11,15 +11,6 @@ import { FileNotFoundError, type DiagramEntry, type Repository } from './Reposit
  */
 export const MANIFEST_FILE = 'index.json';
 
-const ZManifest = z.object({
-  diagrams: z.array(
-    z.object({
-      path: z.string(),
-      name: z.string().optional(),
-      description: z.string().optional(),
-    }),
-  ),
-});
 
 /** Lee el manifiesto. Devuelve null si no existe; lanza error si existe pero no es válido. */
 export async function readManifest(repo: Repository): Promise<DiagramEntry[] | null> {

@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "index.schema.json",
+  "title": "Índice de diagramas del visor",
+  "type": "object",
+  "properties": {
+    "diagrams": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Carpeta del diagrama (se abre su index.json) o fichero .json, relativa a la raíz."
+          },
+          "name": {
+            "description": "Nombre visible.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Descripción corta.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Diagramas que aparecen en el árbol inicial."
+    },
+    "$schema": {
+      "type": "string",
+      "description": "Ruta a este schema (opcional)."
+    }
+  },
+  "required": [
+    "diagrams"
+  ],
+  "description": "Índice de diagramas de la carpeta raíz: solo nombres y rutas.",
+  "$comment": "Generado con «pnpm run schemas». No editar.",
+  "additionalProperties": false
+}

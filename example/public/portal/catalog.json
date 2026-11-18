@@ -35,7 +35,7 @@
     {"id": "mfe-carrito", "type": "microFront", "name": "Carrito", "props": {"route": "/carrito", "remoteEntryUrl": "https://cdn.portal.example.com/carrito/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
       "dependencies": [
         {"target": "cfg-carrito", "type": "config"},
-        {"target": "bff-carrito", "type": "call", "label": "HTTPS", "throught": "gateway", "through": "gateway"},
+        {"target": "bff-carrito", "type": "call", "label": "HTTPS", "through": "gateway"},
         {"target": "ext-cmp-pasarela", "type": "embeds"}
       ]},
     {"id": "mfe-pedidos", "type": "microFront", "name": "Pedidos", "props": {"route": "/pedidos", "remoteEntryUrl": "https://cdn.portal.example.com/pedidos/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},

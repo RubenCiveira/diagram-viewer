@@ -8,6 +8,7 @@ Convenciones:
 - **DEBERÍA**: recomendado.
 - Todos los ficheros son JSON (UTF-8, sin comentarios ni comas finales).
 - Los textos marcados como *Markdown* admiten Markdown básico (negrita, listas, enlaces, código).
+- Hay **JSON Schema** de los tres tipos de fichero y un **validador**: úsalos (ver [§10](#10-json-schema-y-validación)).
 
 ---
 
@@ -96,7 +97,7 @@ Uno por carpeta de diagrama, junto a su `index.json`. Lo usan el diagrama raíz 
 | Campo | Obligatorio | Descripción |
 |---|---|---|
 | `id` | sí | Identificador **único en el catálogo**. Usa `kebab-case` y un prefijo por familia (`mfe-`, `bff-`, `api-`, `cfg-`, `ext-`…). No lo cambies una vez usado: los diagramas lo referencian. |
-| `type` | sí | Tipo de la paleta (ver [§5](#5-tipos-de-nodo-de-la-paleta)). Decide el icono, la forma y los campos de la ficha. |
+| `type` | sí | Tipo del nodo, **texto libre**. Los de la paleta ([§5](#5-tipos-de-nodo-de-la-paleta)) tienen icono, forma y ficha propios; cualquier otro se pinta como nodo genérico. |
 | `name` | no | Nombre visible. Si falta, se usa el título del tipo. |
 | `description` | no | *Markdown*. Aparece en la ficha y en el inventario impreso. |
 | `props` | no | Propiedades del tipo (ver [§5](#5-tipos-de-nodo-de-la-paleta)). Se aceptan claves extra; se muestran tal cual. |
@@ -324,7 +325,7 @@ Las flechas tienen prioridad: primero se colocan los nodos según sus relaciones
 
 ## 5. Tipos de nodo de la paleta
 
-`type` **DEBE** ser uno de estos (un tipo desconocido se pinta igualmente, con un icono de interrogación y sus `props` sin formato).
+`type` es **texto libre**. Estos son los tipos que el visor conoce: tienen icono, forma y una ficha con sus propiedades. Un tipo que no esté en la lista se pinta igualmente como nodo genérico (icono de interrogación), con sus `props` tal cual. Usa estos siempre que encajen y crea tipos nuevos solo cuando ninguno sirva; en ese caso, sé consistente en todo el catálogo.
 
 | `type` | Qué representa | `props` (todas opcionales) |
 |---|---|---|
@@ -365,7 +366,7 @@ Las aristas `microservice` → `externalService`, `externalSoap` o `externalTran
 4. **Diagrama raíz.** Una vista general con pocos nodos (5-10): actores (`kind: "node"`), piezas clave (`kind: "ref"`) y áreas que se detallan en subdiagramas (`kind: "diagram"`). Une con `edges` lo que no venga del catálogo.
 5. **Subdiagramas.** Una vista por área, normalmente definida dentro con `include` por tipo, más `groups` si ayudan a leerla. Para ver una pieza con todas sus relaciones, usa una plantilla `include` + `"$self"`.
 6. **Índice.** Añade la carpeta al `index.json` de la raíz.
-7. **Comprobación.** Repasa la lista de [§8](#8-lista-de-comprobación).
+7. **Comprobación.** Ejecuta `pnpm run validate <carpeta> --strict` hasta que no haya errores ni avisos ([§10](#10-json-schema-y-validación)) y repasa la lista de [§8](#8-lista-de-comprobación).
 
 Criterios de legibilidad:
 
@@ -449,11 +450,12 @@ Criterios de legibilidad:
 
 Antes de dar por terminado un conjunto de diagramas, verifica:
 
+- [ ] `pnpm run validate <carpeta> --strict` termina sin errores ni avisos (cubre la mayoría de los puntos siguientes).
 - [ ] Todos los ficheros son JSON válido (sin comentarios ni comas finales).
 - [ ] El `index.json` de la raíz es un índice (`diagrams`) y contiene la nueva carpeta.
 - [ ] Cada carpeta de diagrama tiene su `index.json` y, si usa `ref` o `include`, su `catalog.json`.
 - [ ] Los `id` del catálogo son únicos; los `id` de los nodos de cada diagrama son únicos en ese diagrama.
-- [ ] Cada `type` de nodo existe en [§5](#5-tipos-de-nodo-de-la-paleta).
+- [ ] Los `type` de nodo son de [§5](#5-tipos-de-nodo-de-la-paleta) salvo que ninguno encaje, y los tipos nuevos se escriben igual en todo el catálogo.
 - [ ] Cada `target` y `through` del catálogo, y cada `ref` de los diagramas, existe en el catálogo de esa carpeta.
 - [ ] Cada `source`/`target` de `edges` es un `id` de nodo **del propio diagrama**.
 - [ ] Ninguna arista lleva `id`.
@@ -464,7 +466,7 @@ Antes de dar por terminado un conjunto de diagramas, verifica:
 Cómo comprobarlo con el visor: abre `diagram-viewer.html` en la carpeta (o sírvela con `python3 -m http.server`). Los problemas aparecen como:
 
 - un aviso rojo en la parte inferior (JSON inválido, aristas a nodos inexistentes, referencias no resueltas);
-- nodos con icono de enlace roto (referencia que no está en el catálogo) o de interrogación (tipo desconocido);
+- nodos con icono de enlace roto (referencia que no está en el catálogo) o de interrogación (tipo sin icono propio: compruébalo si no era intencionado);
 - marcas rojas o naranjas en los nodos con `errors` o `warns`.
 
 ---
@@ -472,3 +474,45 @@ Cómo comprobarlo con el visor: abre `diagram-viewer.html` en la carpeta (o sír
 ## 9. Formato antiguo (no usar)
 
 El visor sigue leyendo, por compatibilidad, diagramas donde `kind` era el tipo del nodo (`"kind": "microservice"`) y subdiagramas con `"kind": "subdiagram"` y `props.file`. **NO** generes ese formato: usa `kind: "node"` + `type`, y `kind: "diagram"` + `file`.
+
+---
+
+## 10. JSON Schema y validación
+
+Los schemas están en [`docs/schemas/`](schemas/):
+
+| Fichero | Schema |
+|---|---|
+| `index.json` de la raíz | [`index.schema.json`](schemas/index.schema.json) |
+| `catalog.json` | [`catalog.schema.json`](schemas/catalog.schema.json) |
+| Cualquier otro `.json` (diagramas) | [`diagram.schema.json`](schemas/diagram.schema.json) |
+
+Son JSON Schema draft-07, con una descripción en cada campo. Son **más estrictos que el visor**:
+
+- Los `type` de nodos y relaciones son texto libre. Los tipos de la paleta aparecen como `examples` en el schema.
+- `kind` solo admite `ref`, `diagram` y `node` (no el formato antiguo).
+- Exigen los campos que necesita cada `kind`: `ref` en `kind: "ref"`, `type` en `kind: "node"`, `file` o `diagram` en `kind: "diagram"`, y `type` o `ref` en cada selector de `include`.
+- **No admiten campos desconocidos**, para detectar erratas como `"dpendencies"`. Las claves libres solo van dentro de `props`.
+
+Cómo usarlos:
+
+- **Validar una carpeta completa**:
+
+  ```bash
+  pnpm run validate <carpeta>            # falla solo con errores de formato
+  pnpm run validate <carpeta> --strict   # falla también con avisos funcionales
+  ```
+
+  Distingue dos niveles:
+
+  | Nivel | Qué es | Ejemplos | ¿Hace fallar el comando? |
+  |---|---|---|---|
+  | **Error de formato** | El fichero no es JSON o no cumple su schema: está mal formado | campo desconocido (`"dpendencies"`), `kind` inválido, `ref` sin su campo `ref`, `id` en una arista | Sí (código 1) |
+  | **Aviso funcional** | El fichero está bien formado, pero una referencia no se resuelve. El visor lo tolera: pinta el nodo marcado y muestra un aviso | `ref` o `through` que no están en el catálogo, `file` inexistente, arista hacia un nodo que no está en el diagrama, `id` duplicado, carpeta del índice inexistente | Solo con `--strict` |
+
+  Cada mensaje indica el fichero y la ruta JSON (p. ej. `/nodes/4 must have required property 'ref'`). Un agente **DEBERÍA** usar `--strict`, salvo que una referencia rota sea intencionada.
+- **Salida estructurada**: si generas los ficheros con una API que admite JSON Schema (structured outputs, function calling), pasa el schema correspondiente.
+- **Editores**: un fichero puede declarar su schema con `"$schema": "<ruta relativa>/diagram.schema.json"`. El visor ignora ese campo.
+
+Los schemas se generan a partir de los mismos validadores que usa el visor (`src/diagram/model.ts`) y de la lista de tipos de la paleta, con `pnpm run schemas`. No los edites a mano: si cambia el formato o se añade un tipo de nodo, vuelve a generarlos.
+

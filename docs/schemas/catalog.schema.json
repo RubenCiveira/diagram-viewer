@@ -1,0 +1,187 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "catalog.schema.json",
+  "title": "Catálogo del visor",
+  "type": "object",
+  "properties": {
+    "version": {
+      "default": "1.0",
+      "description": "Versión del formato: \"1.0\".",
+      "type": "string"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identificador único en el catálogo (kebab-case con prefijo: mfe-, bff-, api-…)."
+          },
+          "type": {
+            "type": "string",
+            "description": "Tipo del nodo. Texto libre: los tipos de la paleta tienen icono y ficha propios; cualquier otro se pinta como nodo genérico.",
+            "examples": [
+              "actor-user",
+              "api",
+              "database",
+              "ext-mfe-component",
+              "ext-microfront",
+              "externalService",
+              "externalSoap",
+              "externalTransaction",
+              "gateway",
+              "gatewayProxy",
+              "microFront",
+              "microservice",
+              "remoteConfig",
+              "remoteOAuth",
+              "shellUi"
+            ]
+          },
+          "name": {
+            "description": "Nombre visible.",
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "description": "Descripción para la ficha. En Markdown."
+          },
+          "props": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {},
+            "description": "Propiedades del tipo de nodo o de la relación (ver la guía, §5). Se admiten claves extra."
+          },
+          "dependencies": {
+            "description": "Relaciones salientes normales: flecha hacia la derecha.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "target": {
+                  "type": "string",
+                  "description": "id del nodo de destino, en el mismo catálogo."
+                },
+                "through": {
+                  "description": "id de un nodo intermedio (p. ej. el gateway): se pinta origen → intermedio → destino, nunca directa.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Tipo de relación (texto libre). Vocabulario recomendado: config, call, loads, embeds, route, proxy-service, proxy-api, guard, contains.",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "parentChild: de padre a hijo (mejor usar el bloque uses).",
+                  "type": "string",
+                  "enum": [
+                    "lateral",
+                    "parentChild"
+                  ]
+                },
+                "label": {
+                  "description": "Texto sobre la flecha.",
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Descripción para la ficha de la relación. En Markdown."
+                },
+                "technology": {
+                  "description": "Tecnología; etiqueta si no hay label.",
+                  "type": "string"
+                },
+                "props": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {},
+                  "description": "Propiedades del tipo de nodo o de la relación (ver la guía, §5). Se admiten claves extra."
+                }
+              },
+              "required": [
+                "target"
+              ],
+              "description": "Relación saliente de un nodo del catálogo.",
+              "additionalProperties": false
+            }
+          },
+          "uses": {
+            "description": "Relaciones de acoplamiento fuerte: flecha hacia abajo, destacada.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "target": {
+                  "type": "string",
+                  "description": "id del nodo de destino, en el mismo catálogo."
+                },
+                "through": {
+                  "description": "id de un nodo intermedio (p. ej. el gateway): se pinta origen → intermedio → destino, nunca directa.",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Tipo de relación (texto libre). Vocabulario recomendado: config, call, loads, embeds, route, proxy-service, proxy-api, guard, contains.",
+                  "type": "string"
+                },
+                "kind": {
+                  "description": "parentChild: de padre a hijo (mejor usar el bloque uses).",
+                  "type": "string",
+                  "enum": [
+                    "lateral",
+                    "parentChild"
+                  ]
+                },
+                "label": {
+                  "description": "Texto sobre la flecha.",
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Descripción para la ficha de la relación. En Markdown."
+                },
+                "technology": {
+                  "description": "Tecnología; etiqueta si no hay label.",
+                  "type": "string"
+                },
+                "props": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {},
+                  "description": "Propiedades del tipo de nodo o de la relación (ver la guía, §5). Se admiten claves extra."
+                }
+              },
+              "required": [
+                "target"
+              ],
+              "description": "Relación saliente de un nodo del catálogo.",
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "type"
+        ],
+        "description": "Pieza del sistema.",
+        "additionalProperties": false
+      },
+      "description": "Nodos del sistema, cada uno con sus relaciones salientes."
+    },
+    "$schema": {
+      "type": "string",
+      "description": "Ruta a este schema (opcional)."
+    }
+  },
+  "required": [
+    "nodes"
+  ],
+  "description": "Catálogo de una carpeta de diagramas: nodos y relaciones reutilizables.",
+  "$comment": "Generado con «pnpm run schemas». No editar.",
+  "additionalProperties": false
+}

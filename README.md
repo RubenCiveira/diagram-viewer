@@ -82,6 +82,7 @@ El PDF (A4) se descarga directamente con el título del diagrama como nombre. La
 ## Formato
 
 > Para generar catálogos y diagramas con agentes de IA (o como referencia completa de cada campo), ver la guía [docs/guia-catalogo-y-diagramas.md](docs/guia-catalogo-y-diagramas.md).
+> Hay JSON Schema de cada fichero en [docs/schemas/](docs/schemas/) (`pnpm run schemas` los regenera) y `pnpm run validate <carpeta>` valida una carpeta de diagramas completa.
 
 La carpeta contiene `index.json` (el índice de diagramas) y una carpeta por diagrama, cada una con su diagrama raíz, sus subdiagramas y, opcionalmente, su `catalog.json`:
 
