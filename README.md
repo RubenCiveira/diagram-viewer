@@ -9,16 +9,26 @@ Requiere Node ≥ 20.19 y pnpm 10.
 ```bash
 pnpm install
 pnpm run dev        # http://localhost:5737 — sirve example/ como si fuera la carpeta de diagramas
-pnpm run build      # comprueba tipos y genera dist/diagram-viewer.html (un único fichero)
+pnpm run build      # comprueba tipos y genera release/<versión>/diagram-viewer.html (un único fichero)
 pnpm run typecheck  # sólo comprobación de tipos
-pnpm run preview    # http://localhost:5738 — sirve dist/ (sin diagramas al lado: muestra la pantalla de acceso a carpeta)
+pnpm run preview    # http://localhost:5738/diagram-viewer.html — sirve la versión actual de release/ (sin diagramas al lado)
 ```
 
 En desarrollo, el contenido de [example/](example/) se sirve en la raíz (`/index.json`, `/public/e-commerce/…`), así que el visor lo lee por HTTP sin pedir permisos y se recarga en caliente al cambiar el código.
 
-Copia `dist/diagram-viewer.html` en la raíz de la carpeta de diagramas y ábrelo:
+Cada versión se genera en su propia carpeta, `release/<versión>/`, con la versión de `package.json`. Para publicar una nueva, sube la versión y compila:
 
-- **Como fichero (`file://`)**: el visor pide acceso a la carpeta.
+```bash
+pnpm version minor --no-git-tag-version   # 0.1.0 → 0.2.0 (o patch / major)
+pnpm run build                             # release/0.2.0/diagram-viewer.html
+```
+
+Al compilar solo se vacía la carpeta de esa versión; las anteriores se conservan para poder compartirlas.
+
+Copia `release/<versión>/diagram-viewer.html` en la raíz de la carpeta de diagramas y ábrelo:
+
+- **Con doble clic, sin permisos**: genera `diagram-data.js` en la carpeta (ver abajo) y abre el HTML directamente.
+- **Como fichero (`file://`) sin `diagram-data.js`**: el visor pide acceso a la carpeta.
   - En Chrome y Edge la recuerda, y en la siguiente visita basta un clic.
   - En Firefox y Safari usa el selector de carpeta, o se puede arrastrar la carpeta a la ventana.
 - **Por HTTP** (`python3 -m http.server`): lee los ficheros directamente, sin pedir permiso.
@@ -28,6 +38,19 @@ Al abrirlo se muestra el árbol de diagramas de la carpeta. Al elegir uno se abr
 - Pulsar un nodo `diagram` abre ese diagrama.
 - Pulsar cualquier otro nodo, o una arista, abre su ficha.
 - Retroceso vuelve al diagrama padre (o al árbol) y Esc cierra la ficha.
+
+### Abrirlo con doble clic sin pedir permisos
+
+Los navegadores no dejan que una página abierta como fichero lea los `.json` de su carpeta, pero sí que cargue un `<script>` que esté a su lado. Por eso:
+
+```bash
+pnpm run pack-data ../mis-diagramas      # genera ../mis-diagramas/diagram-data.js
+```
+
+- `pack-data` empaqueta todos los `.json` de la carpeta (y subcarpetas) en `diagram-data.js`. Si alguno tiene un error, lo indica y no genera nada.
+- `diagram-viewer.html` carga `./diagram-data.js` si existe y lo usa sin preguntar nada.
+- **Hay que volver a ejecutar `pack-data` cada vez que cambien los diagramas**, y recargar la página.
+- Si el visor se sirve por HTTP, lee siempre los `.json` directamente (`diagram-data.js` se ignora). Si no hay `diagram-data.js`, se pide acceso a la carpeta como siempre.
 
 ### Estado en la URL
 

@@ -146,7 +146,12 @@ function FolderAccessGate({ storage, onReady }: AccessGateProps & { storage: Loc
         </p>
         <details>
           <summary>Abrir sin pedir permisos</summary>
-          <p>Si sirves la carpeta por HTTP, el visor lee los ficheros directamente:</p>
+          <p>
+            Con doble clic: genera <code>diagram-data.js</code> junto a este fichero (y vuelve a generarlo cuando cambien los
+            diagramas):
+          </p>
+          <pre>{'pnpm run pack-data carpeta-de-diagramas'}</pre>
+          <p>O sirve la carpeta por HTTP y el visor lee los ficheros directamente:</p>
           <pre>{'cd carpeta-de-diagramas\npython3 -m http.server 8000\n# http://localhost:8000/diagram-viewer.html'}</pre>
         </details>
         <input ref={inputRef} type="file" hidden multiple onChange={onInput} {...{ webkitdirectory: '' }} />
