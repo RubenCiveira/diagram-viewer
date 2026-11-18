@@ -1,0 +1,173 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "mfe-shell", "type": "shellUi", "name": "Shell", "description": "Contenedor del portal: menú, sesión y carga del resto de microfrontends.", "props": {"routeBase": "/", "authRequired": true},
+      "dependencies": [
+        {"target": "mfe-catalogo", "type": "loads"},
+        {"target": "mfe-carrito", "type": "loads"},
+        {"target": "mfe-pedidos", "type": "loads"},
+        {"target": "mfe-perfil", "type": "loads"},
+        {"target": "mfe-soporte", "type": "loads"},
+        {"target": "cfg-shell", "type": "config"},
+        {"target": "bff-shell", "type": "call", "label": "HTTPS"},
+        {"target": "datos-usuario", "type": "call", "label": "HTTPS"},
+        {"target": "ext-cmp-chat", "type": "loads"},
+        {"target": "ext-cmp-cookies", "type": "loads"},
+        {"target": "ext-mf-blog", "type": "loads"},
+        {"target": "ext-mf-ofertas", "type": "loads"},
+        {"target": "ext-mf-tarjetas-regalo", "type": "loads"},
+        {"target": "ext-mf-empleo", "type": "loads"}
+      ],
+      "uses": [
+        {"target": "mfe-login", "type": "guard", "label": "protege", "description": "La shell no muestra nada hasta que login valida la sesión: si no hay sesión, redirige a login."}
+      ]},
+    {"id": "mfe-login", "type": "microFront", "name": "Login", "props": {"route": "/login", "remoteEntryUrl": "https://cdn.portal.example.com/login/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
+      "dependencies": [
+        {"target": "cfg-login", "type": "config"},
+        {"target": "bff-login", "type": "call", "label": "HTTPS"}
+      ]},
+    {"id": "mfe-catalogo", "type": "microFront", "name": "Catálogo", "props": {"route": "/catalogo", "remoteEntryUrl": "https://cdn.portal.example.com/catalogo/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
+      "dependencies": [
+        {"target": "cfg-catalogo", "type": "config"},
+        {"target": "bff-catalogo", "type": "call", "label": "HTTPS"},
+        {"target": "ext-cmp-buscador", "type": "embeds"}
+      ]},
+    {"id": "mfe-carrito", "type": "microFront", "name": "Carrito", "props": {"route": "/carrito", "remoteEntryUrl": "https://cdn.portal.example.com/carrito/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
+      "dependencies": [
+        {"target": "cfg-carrito", "type": "config"},
+        {"target": "bff-carrito", "type": "call", "label": "HTTPS"},
+        {"target": "ext-cmp-pasarela", "type": "embeds"}
+      ]},
+    {"id": "mfe-pedidos", "type": "microFront", "name": "Pedidos", "props": {"route": "/pedidos", "remoteEntryUrl": "https://cdn.portal.example.com/pedidos/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
+      "dependencies": [
+        {"target": "cfg-pedidos", "type": "config"},
+        {"target": "bff-pedidos", "type": "call", "label": "HTTPS"},
+        {"target": "datos-usuario", "type": "call", "label": "HTTPS"},
+        {"target": "ext-cmp-tiendas", "type": "embeds"}
+      ]},
+    {"id": "mfe-perfil", "type": "microFront", "name": "Perfil", "props": {"route": "/perfil", "remoteEntryUrl": "https://cdn.portal.example.com/perfil/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
+      "dependencies": [
+        {"target": "cfg-perfil", "type": "config"},
+        {"target": "bff-perfil", "type": "call", "label": "HTTPS"},
+        {"target": "datos-usuario", "type": "call", "label": "HTTPS"},
+        {"target": "ext-cmp-fidelizacion", "type": "embeds"}
+      ]},
+    {"id": "mfe-soporte", "type": "microFront", "name": "Soporte", "props": {"route": "/soporte", "remoteEntryUrl": "https://cdn.portal.example.com/soporte/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
+      "dependencies": [
+        {"target": "cfg-soporte", "type": "config"},
+        {"target": "bff-soporte", "type": "call", "label": "HTTPS"},
+        {"target": "ext-cmp-chat", "type": "embeds"},
+        {"target": "ext-cmp-tiendas", "type": "embeds"}
+      ]},
+    {"id": "cfg-shell", "type": "remoteConfig", "name": "config shell", "props": {"source": "https://config.portal.example.com/shell.json", "format": "json", "refresh": "5 min", "flags": ["menu-v2", "tema-oscuro"]}},
+    {"id": "cfg-login", "type": "remoteConfig", "name": "config login", "props": {"source": "https://config.portal.example.com/login.json", "format": "json", "refresh": "5 min", "flags": ["mfa", "recordar-sesion"]}},
+    {"id": "cfg-catalogo", "type": "remoteConfig", "name": "config catalogo", "props": {"source": "https://config.portal.example.com/catalogo.json", "format": "json", "refresh": "5 min", "flags": ["filtros-avanzados"]}},
+    {"id": "cfg-carrito", "type": "remoteConfig", "name": "config carrito", "props": {"source": "https://config.portal.example.com/carrito.json", "format": "json", "refresh": "5 min", "flags": ["pago-express"]}},
+    {"id": "cfg-pedidos", "type": "remoteConfig", "name": "config pedidos", "props": {"source": "https://config.portal.example.com/pedidos.json", "format": "json", "refresh": "5 min", "flags": ["devoluciones-online"]}},
+    {"id": "cfg-perfil", "type": "remoteConfig", "name": "config perfil", "props": {"source": "https://config.portal.example.com/perfil.json", "format": "json", "refresh": "5 min", "flags": ["borrar-cuenta"]}},
+    {"id": "cfg-soporte", "type": "remoteConfig", "name": "config soporte", "props": {"source": "https://config.portal.example.com/soporte.json", "format": "json", "refresh": "5 min", "flags": ["chat-en-vivo"]}},
+    {"id": "bff-shell", "type": "microservice", "name": "bff-shell", "description": "Backend for frontend del microfrontend **Shell**.", "props": {"tech": "node", "baseUrl": "https://bff-shell.portal.internal"},
+      "dependencies": [
+        {"target": "api-auth", "type": "config", "label": "REST"},
+        {"target": "api-notificaciones", "type": "config", "label": "REST"},
+        {"target": "api-preferencias", "type": "config", "label": "REST"},
+        {"target": "datos-usuario", "type": "call", "label": "REST"}
+      ]},
+    {"id": "bff-login", "type": "microservice", "name": "bff-login", "description": "Backend for frontend del microfrontend **Login**.", "props": {"tech": "node", "baseUrl": "https://bff-login.portal.internal"},
+      "dependencies": [
+        {"target": "api-auth", "type": "config", "label": "REST"},
+        {"target": "api-consentimientos", "type": "config", "label": "REST"},
+        {"target": "datos-usuario", "type": "call", "label": "REST"}
+      ]},
+    {"id": "bff-catalogo", "type": "microservice", "name": "bff-catalogo", "description": "Backend for frontend del microfrontend **Catálogo**.", "props": {"tech": "quarkus", "baseUrl": "https://bff-catalogo.portal.internal"},
+      "dependencies": [
+        {"target": "api-productos", "type": "config", "label": "REST"},
+        {"target": "api-precios", "type": "config", "label": "REST"},
+        {"target": "api-stock", "type": "config", "label": "REST"},
+        {"target": "api-recomendaciones", "type": "config", "label": "REST"},
+        {"target": "mongo", "type": "config", "technology": "MongoDB driver"}
+      ]},
+    {"id": "bff-carrito", "type": "microservice", "name": "bff-carrito", "description": "Backend for frontend del microfrontend **Carrito**.", "props": {"tech": "spring", "baseUrl": "https://bff-carrito.portal.internal"},
+      "dependencies": [
+        {"target": "api-carrito", "type": "config", "label": "REST"},
+        {"target": "api-precios", "type": "config", "label": "REST"},
+        {"target": "api-stock", "type": "config", "label": "REST"},
+        {"target": "api-pagos", "type": "config", "label": "REST"},
+        {"target": "api-envios", "type": "config", "label": "REST"},
+        {"target": "mongo", "type": "config", "technology": "MongoDB driver"},
+        {"target": "datos-usuario", "type": "call", "label": "REST"}
+      ]},
+    {"id": "bff-pedidos", "type": "microservice", "name": "bff-pedidos", "description": "Backend for frontend del microfrontend **Pedidos**.", "props": {"tech": "spring", "baseUrl": "https://bff-pedidos.portal.internal"},
+      "dependencies": [
+        {"target": "api-pedidos", "type": "config", "label": "REST"},
+        {"target": "api-envios", "type": "config", "label": "REST"},
+        {"target": "api-pagos", "type": "config", "label": "REST"},
+        {"target": "api-clientes", "type": "config", "label": "REST"},
+        {"target": "api-notificaciones", "type": "config", "label": "REST"},
+        {"target": "api-tickets", "type": "config", "label": "REST"},
+        {"target": "postgres", "type": "config", "technology": "JDBC"},
+        {"target": "datos-usuario", "type": "call", "label": "REST"}
+      ]},
+    {"id": "bff-perfil", "type": "microservice", "name": "bff-perfil", "description": "Backend for frontend del microfrontend **Perfil**.", "props": {"tech": "quarkus", "baseUrl": "https://bff-perfil.portal.internal"},
+      "dependencies": [
+        {"target": "api-clientes", "type": "config", "label": "REST"},
+        {"target": "api-preferencias", "type": "config", "label": "REST"},
+        {"target": "api-consentimientos", "type": "config", "label": "REST"},
+        {"target": "datos-usuario", "type": "call", "label": "REST"}
+      ]},
+    {"id": "bff-soporte", "type": "microservice", "name": "bff-soporte", "description": "Backend for frontend del microfrontend **Soporte**.", "props": {"tech": "php-slim", "baseUrl": "https://bff-soporte.portal.internal"},
+      "dependencies": [
+        {"target": "api-tickets", "type": "config", "label": "REST"},
+        {"target": "api-faq", "type": "config", "label": "REST"},
+        {"target": "mongo", "type": "config", "technology": "MongoDB driver"}
+      ]},
+    {"id": "datos-usuario", "type": "microservice", "name": "datos-usuario", "description": "Fuente única de los datos del usuario (perfil, preferencias, consentimientos). La consultan varios microfrontends y backends.", "props": {"tech": "quarkus", "baseUrl": "https://datos-usuario.portal.internal"},
+      "dependencies": [
+        {"target": "api-clientes", "type": "config", "label": "REST"},
+        {"target": "api-preferencias", "type": "config", "label": "REST"},
+        {"target": "postgres", "type": "config", "technology": "JDBC"}
+      ]},
+    {"id": "api-auth", "type": "api", "name": "API autenticación", "props": {"protocol": "https", "basePath": "/auth", "version": "v3", "auth": "none"}},
+    {"id": "api-productos", "type": "api", "name": "API productos", "props": {"protocol": "https", "basePath": "/products", "version": "v2", "auth": "oauth"}},
+    {"id": "api-precios", "type": "api", "name": "API precios", "props": {"protocol": "https", "basePath": "/prices", "version": "v1", "auth": "oauth"}},
+    {"id": "api-stock", "type": "api", "name": "API stock", "props": {"protocol": "https", "basePath": "/stock", "version": "v1", "auth": "oauth"}},
+    {"id": "api-recomendaciones", "type": "api", "name": "API recomendaciones", "props": {"protocol": "https", "basePath": "/recommendations", "version": "v1", "auth": "oauth"}},
+    {"id": "api-carrito", "type": "api", "name": "API carrito", "props": {"protocol": "https", "basePath": "/carts", "version": "v2", "auth": "oauth"}},
+    {"id": "api-pagos", "type": "api", "name": "API pagos", "props": {"protocol": "https", "basePath": "/payments", "version": "v4", "auth": "oauth"}},
+    {"id": "api-pedidos", "type": "api", "name": "API pedidos", "props": {"protocol": "https", "basePath": "/orders", "version": "v3", "auth": "oauth"}},
+    {"id": "api-envios", "type": "api", "name": "API envíos", "props": {"protocol": "https", "basePath": "/shipments", "version": "v1", "auth": "oauth"}},
+    {"id": "api-clientes", "type": "api", "name": "API clientes", "props": {"protocol": "https", "basePath": "/customers", "version": "v2", "auth": "oauth"}},
+    {"id": "api-notificaciones", "type": "api", "name": "API notificaciones", "props": {"protocol": "https", "basePath": "/notifications", "version": "v1", "auth": "oauth"}},
+    {"id": "api-tickets", "type": "api", "name": "API tickets", "props": {"protocol": "https", "basePath": "/tickets", "version": "v1", "auth": "oauth"}},
+    {"id": "api-faq", "type": "api", "name": "API FAQ", "props": {"protocol": "https", "basePath": "/faq", "version": "v1", "auth": "none"}},
+    {"id": "api-consentimientos", "type": "api", "name": "API consentimientos", "props": {"protocol": "https", "basePath": "/consents", "version": "v1", "auth": "oauth"}},
+    {"id": "api-preferencias", "type": "external-backend", "name": "API preferencias", "props": {"protocol": "https", "basePath": "/preferences", "version": "v1", "auth": "oauth"}},
+    {"id": "mongo", "type": "database", "name": "MongoDB", "description": "Documentos de catálogo, carritos y tickets.", "props": {"tech": "node", "baseUrl": "mongodb://mongo.portal.internal:27017"}},
+    {"id": "postgres", "type": "database", "name": "PostgreSQL", "description": "Pedidos y datos de usuario.", "props": {"tech": "spring", "baseUrl": "postgres://pg.portal.internal:5432"}},
+    {"id": "gateway", "type": "gateway", "name": "API Gateway", "description": "Entrada única del portal. Enruta hacia los backends y hace de proxy de dos servicios externos.", "props": {"entryHost": "api.portal.example.com", "entryPath": "/api", "rateLimit": 500},
+      "dependencies": [
+        {"target": "ext-preferencias", "type": "proxy-service", "label": "proxy-service", "props": {"path": "/api/preferencias"}},
+        {"target": "ext-telemetria", "type": "proxy-api", "label": "proxy-api", "props": {"path": "/api/telemetria"}},
+        {"target": "bff-shell", "type": "route"},
+        {"target": "bff-login", "type": "route"},
+        {"target": "bff-catalogo", "type": "route"},
+        {"target": "bff-carrito", "type": "route"},
+        {"target": "bff-pedidos", "type": "route"},
+        {"target": "bff-perfil", "type": "route"},
+        {"target": "bff-soporte", "type": "route"},
+        {"target": "datos-usuario", "type": "route"}
+      ]},
+    {"id": "ext-preferencias", "type": "externalService", "name": "Preferencias", "description": "Servicio externo de preferencias de usuario.", "props": {"type": "SaaS", "endpoint": "https://prefs.proveedor.example.com"}},
+    {"id": "ext-telemetria", "type": "externalService", "name": "Telemetría", "description": "Servicio externo de telemetría y analítica.", "props": {"type": "SaaS", "endpoint": "https://telemetry.proveedor.example.com"}},
+    {"id": "ext-cmp-buscador", "type": "ext-mfe-component", "name": "Buscador", "description": "Componente externo mantenido por **Equipo Búsqueda**.", "props": {"team": "Equipo Búsqueda", "contact": "buscador@equipos.example.com", "remoteEntryUrl": "https://cdn.buscador.example.com/remoteEntry.js", "exposedModule": "./SearchBox", "version": "2.1.0"}},
+    {"id": "ext-cmp-chat", "type": "ext-mfe-component", "name": "Chat de atención", "description": "Componente externo mantenido por **Equipo Atención**.", "props": {"team": "Equipo Atención", "contact": "chat@equipos.example.com", "remoteEntryUrl": "https://cdn.chat.example.com/remoteEntry.js", "exposedModule": "./ChatWidget", "version": "2.1.0"}},
+    {"id": "ext-cmp-pasarela", "type": "ext-mfe-component", "name": "Pasarela de pago", "description": "Componente externo mantenido por **Equipo Pagos**.", "props": {"team": "Equipo Pagos", "contact": "pasarela@equipos.example.com", "remoteEntryUrl": "https://cdn.pasarela.example.com/remoteEntry.js", "exposedModule": "./Checkout", "version": "2.1.0"}},
+    {"id": "ext-cmp-fidelizacion", "type": "ext-mfe-component", "name": "Fidelización", "description": "Componente externo mantenido por **Equipo Marketing**.", "props": {"team": "Equipo Marketing", "contact": "fidelizacion@equipos.example.com", "remoteEntryUrl": "https://cdn.fidelizacion.example.com/remoteEntry.js", "exposedModule": "./LoyaltyCard", "version": "2.1.0"}},
+    {"id": "ext-cmp-tiendas", "type": "ext-mfe-component", "name": "Localizador de tiendas", "description": "Componente externo mantenido por **Equipo Tiendas**.", "props": {"team": "Equipo Tiendas", "contact": "tiendas@equipos.example.com", "remoteEntryUrl": "https://cdn.tiendas.example.com/remoteEntry.js", "exposedModule": "./StoreLocator", "version": "2.1.0"}},
+    {"id": "ext-cmp-cookies", "type": "ext-mfe-component", "name": "Banner de cookies", "description": "Componente externo mantenido por **Equipo Legal**.", "props": {"team": "Equipo Legal", "contact": "cookies@equipos.example.com", "remoteEntryUrl": "https://cdn.cookies.example.com/remoteEntry.js", "exposedModule": "./CookieBanner", "version": "2.1.0"}},
+    {"id": "ext-mf-blog", "type": "ext-microfront", "name": "Blog", "description": "Página completa mantenida por **Equipo Contenidos**; la shell la carga en `/blog`.", "props": {"team": "Equipo Contenidos", "contact": "blog@equipos.example.com", "route": "/blog", "remoteEntryUrl": "https://cdn.blog.example.com/remoteEntry.js", "exposedModule": "./Page", "version": "1.4.0"}},
+    {"id": "ext-mf-ofertas", "type": "ext-microfront", "name": "Ofertas", "description": "Página completa mantenida por **Equipo Marketing**; la shell la carga en `/ofertas`.", "props": {"team": "Equipo Marketing", "contact": "ofertas@equipos.example.com", "route": "/ofertas", "remoteEntryUrl": "https://cdn.ofertas.example.com/remoteEntry.js", "exposedModule": "./Page", "version": "1.4.0"}},
+    {"id": "ext-mf-tarjetas-regalo", "type": "ext-microfront", "name": "Tarjetas regalo", "description": "Página completa mantenida por **Equipo Pagos**; la shell la carga en `/tarjetas-regalo`.", "props": {"team": "Equipo Pagos", "contact": "tarjetas-regalo@equipos.example.com", "route": "/tarjetas-regalo", "remoteEntryUrl": "https://cdn.tarjetas-regalo.example.com/remoteEntry.js", "exposedModule": "./Page", "version": "1.4.0"}},
+    {"id": "ext-mf-empleo", "type": "ext-microfront", "name": "Trabaja con nosotros", "description": "Página completa mantenida por **Equipo Personas**; la shell la carga en `/empleo`.", "props": {"team": "Equipo Personas", "contact": "empleo@equipos.example.com", "route": "/empleo", "remoteEntryUrl": "https://cdn.empleo.example.com/remoteEntry.js", "exposedModule": "./Page", "version": "1.4.0"}}
+  ]
+}

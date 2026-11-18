@@ -1,0 +1,46 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "shell", "type": "shellUi", "name": "Tienda web", "props": {"routeBase": "/", "authRequired": false},
+      "dependencies": [
+        {"target": "catalogo-mf", "type": "contains", "kind": "parentChild"},
+        {"target": "gateway", "type": "call", "label": "HTTPS"}
+      ]},
+    {"id": "catalogo-mf", "type": "microFront", "name": "Catálogo", "props": {"route": "/catalogo", "version": "2.4.0", "dependsOn": ["design-system", "auth"]}},
+    {"id": "gateway", "type": "gateway", "name": "API Gateway", "props": {"entryHost": "api.example.com", "entryPath": "/api", "rateLimit": 200},
+      "dependencies": [
+        {"target": "oauth", "type": "config"},
+        {"target": "pagos", "type": "call", "label": "REST"},
+        {"target": "orders-api", "type": "call", "label": "REST"}
+      ]},
+    {"id": "oauth", "type": "remoteOAuth", "name": "OAuth proxy", "props": {"path": "/auth", "targetUrl": "https://sso.example.com", "cors": true}},
+    {"id": "pagos", "type": "microservice", "name": "Pagos", "description": "Cobros y reembolsos.\n\n- PCI DSS\n- SLA **99,95 %**", "props": {"tech": "spring", "baseUrl": "https://pagos.internal"},
+      "dependencies": [
+        {"target": "stripe", "type": "config", "props": {"method": "POST", "path": "/v1/charges", "connection": {"readTimeout": "5s", "connectTimeout": "1s"}}},
+        {"target": "pagos-db", "type": "config", "technology": "JDBC"}
+      ]},
+    {"id": "pagos-db", "type": "database", "name": "pagos-db", "props": {"tech": "spring"}},
+    {"id": "stripe", "type": "externalService", "name": "Stripe", "props": {"type": "Pasarela de pago", "endpoint": "https://api.stripe.com"}},
+    {"id": "orders-api", "type": "api", "name": "API pedidos", "props": {"protocol": "https", "basePath": "/orders", "version": "v2", "auth": "oauth"},
+      "dependencies": [
+        {"target": "orders-svc", "type": "config"}
+      ]},
+    {"id": "orders-svc", "type": "microservice", "name": "orders-service", "description": "Gestiona el ciclo de vida de los pedidos.", "props": {"tech": "quarkus", "baseUrl": "https://orders.internal"},
+      "dependencies": [
+        {"target": "orders-db", "type": "config", "technology": "JDBC"},
+        {"target": "sap", "type": "config", "props": {"code": "ZORD01", "host": "sap-prd"}},
+        {"target": "aeat", "type": "config", "props": {"name": "SuministroFactEmitidas"}},
+        {"target": "stock-svc", "type": "call", "label": "stock"}
+      ]},
+    {"id": "orders-db", "type": "database", "name": "orders-db", "props": {"tech": "quarkus"}},
+    {"id": "sap", "type": "externalTransaction", "name": "SAP", "props": {"type": "ERP", "notes": "Alta de pedidos en SAP"}},
+    {"id": "aeat", "type": "externalSoap", "name": "AEAT", "props": {"type": "Facturación", "endpoint": "https://www.agenciatributaria.gob.es"}},
+    {"id": "stock-svc", "type": "microservice", "name": "stock-service", "props": {"tech": "node"},
+      "dependencies": [
+        {"target": "redis", "type": "config"},
+        {"target": "erp", "type": "config"}
+      ]},
+    {"id": "redis", "type": "database", "name": "Redis", "description": "Caché de stock (TTL 30 s)"},
+    {"id": "erp", "type": "externalService", "name": "ERP almacén", "props": {"type": "REST"}}
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "title": "Servicio de pedidos",
+  "description": "`orders-service` importa sus relaciones de configuración y las entrantes de tipo `config`. **Inventario** es otro diagrama.",
+  "nodes": [
+    { "id": "svc", "kind": "ref", "ref": "orders-svc", "expand": "config",
+      "incoming": [ { "type": "config", "import": true } ],
+      "warns": ["Sin réplica en la segunda zona"] },
+    { "id": "db", "kind": "ref", "ref": "orders-db" },
+    { "id": "inventario", "kind": "diagram", "file": "inventario.json", "props": { "color": "#f59e0b" } },
+    { "id": "cierre", "kind": "node", "type": "batch-job", "name": "Cierre diario", "props": { "cron": "0 2 * * *" } },
+    { "id": "roto", "kind": "ref", "ref": "no-existe" },
+    { "id": "nota", "kind": "node", "type": "note", "props": { "text": "`batch-job` no está en la paleta y `no-existe` no está en el catálogo: ambos se pintan igualmente, marcados.", "color": "blue" } }
+  ],
+  "edges": [
+    { "source": "svc", "target": "inventario", "label": "stock" },
+    { "source": "cierre", "target": "db", "description": "Consolida los pedidos del día." }
+  ]
+}

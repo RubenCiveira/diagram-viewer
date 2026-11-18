@@ -1,0 +1,6 @@
+{
+  "diagrams": [
+    { "path": "public/e-commerce", "name": "Plataforma e-commerce", "description": "Tienda, gateway, pagos y pedidos." },
+    { "path": "public/portal", "name": "Portal de clientes", "description": "7 microfrontends con su configuración y su backend, APIs, MongoDB y PostgreSQL." }
+  ]
+}

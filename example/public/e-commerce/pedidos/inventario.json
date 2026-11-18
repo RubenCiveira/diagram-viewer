@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "title": "Inventario",
+  "direction": "TB",
+  "nodes": [
+    { "id": "stock", "kind": "ref", "ref": "stock-svc", "expand": "all" }
+  ],
+  "edges": []
+}
