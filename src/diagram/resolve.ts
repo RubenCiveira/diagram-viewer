@@ -1,9 +1,10 @@
-import { edgeId, includedTypes, INLINE_SEP, UniqueIds } from './model';
+import { edgeId, includedTypes, INLINE_SEP, matchesRelationPattern, UniqueIds } from './model';
 import type {
   CatalogModel,
   CatalogNode,
   CatalogRelation,
   DiagramGroup,
+  IncludeRule,
   DiagramEdge,
   DiagramModel,
   DiagramNode,
@@ -37,6 +38,8 @@ export type ViewNode = {
   width?: number;
   height?: number;
   origin: NodeOrigin;
+  /** Subdiagrama que abre al pulsarlo (ruta relativa al diagrama actual, p. ej. `::@0:mfe-login`) */
+  subdiagram?: string;
 };
 
 export type ViewEdge = DiagramEdge & {
@@ -95,7 +98,7 @@ export class CatalogIndex {
 
 /** ¿El diagrama usa el catálogo? (para cargarlo sólo si hace falta) */
 export function usesCatalog(model: DiagramModel): boolean {
-  return includedTypes(model).length > 0 || model.nodes.some((n) => n.kind === 'ref');
+  return !!model.include?.length || includedTypes(model).length > 0 || model.nodes.some((n) => n.kind === 'ref');
 }
 
 /**
@@ -184,21 +187,53 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
         if (rule) addRelation(rel, rule);
       }
     });
-    // Tipos a pintar: todos los nodos del catálogo de esos tipos y las relaciones entre lo pintado
-    if (includeTypes.length) {
-      const types = new Set(includeTypes);
-      for (const c of catalog.model.nodes) {
-        if (!types.has(c.type)) continue;
-        // Son el contenido de la vista, no nodos traídos por una expansión: se pintan como propios
-        const v = endpoint(c.id, true);
-        if (v?.origin.kind === 'ref' && v.origin.imported) v.origin = { ...v.origin, imported: false };
+    // include: por tipo (todos los nodos de ese tipo) o por ref (un nodo y las relaciones que
+    // encajen con sus patrones). Lo que incluye forma parte de la vista: se pinta como propio.
+    const rules: { rule: IncludeRule; index: number }[] = [
+      ...(model.include ?? []).map((rule, index) => ({ rule, index })),
+      ...(model.types ?? []).map((type) => ({ rule: { type }, index: -1 })),
+    ];
+    const own = (v: ViewNode | undefined) => {
+      if (v?.origin.kind === 'ref' && v.origin.imported) v.origin = { ...v.origin, imported: false };
+      return v;
+    };
+    // Con plantilla, cada nodo incluido abre su propio subdiagrama: `::@<regla>:<id del catálogo>`
+    const withTemplate = (v: ViewNode | undefined, rule: IncludeRule, index: number) => {
+      if (v && rule.diagram && index >= 0 && !v.subdiagram && v.origin.kind === 'ref') {
+        v.subdiagram = `${INLINE_SEP}@${index}:${v.origin.catalogId}`;
       }
-      for (const rel of catalog.model.relations) addRelation(rel, { import: false });
+    };
+    for (const { rule, index } of rules) {
+      if (rule.type) {
+        for (const c of catalog.model.nodes) if (c.type === rule.type) withTemplate(own(endpoint(c.id, true)), rule, index);
+      }
+      if (rule.ref) {
+        if (!catalog.nodes.has(rule.ref)) {
+          warnings.push(`include: «${rule.ref}» no existe en el catálogo`);
+          continue;
+        }
+        withTemplate(own(endpoint(rule.ref, true)), rule, index);
+        for (const rel of catalog.outgoing.get(rule.ref) ?? []) {
+          const target = catalog.nodes.get(rel.target);
+          if (!target || !matchesRelationPattern(rel.uses ? rule.uses : rule.dependencies, rel.type, target.type)) continue;
+          addRelation(rel, { import: true });
+          own(byCatalogId.get(rel.target));
+        }
+        // Entrantes: quién depende de este nodo o lo usa
+        for (const rel of catalog.incoming.get(rule.ref) ?? []) {
+          const source = catalog.nodes.get(rel.source);
+          if (!source || !matchesRelationPattern(rule.incoming, rel.type, source.type)) continue;
+          addRelation(rel, { import: true });
+          own(byCatalogId.get(rel.source));
+        }
+      }
     }
+    // Vistas por tipo: también todas las relaciones del catálogo entre los nodos pintados
+    if (rules.some(({ rule }) => rule.type)) for (const rel of catalog.model.relations) addRelation(rel, { import: false });
     nodes.push(...imported);
   }
 
-  if (includeTypes.length && !catalog) warnings.push('"include" necesita el catálogo de la carpeta para saber qué nodos pintar');
+  if ((includeTypes.length || model.include?.length) && !catalog) warnings.push('"include" necesita el catálogo de la carpeta para saber qué nodos pintar');
 
   // Tipos incluidos: filtra los nodos importados (los declarados se pintan siempre) y sus aristas
   let keep = nodes;
@@ -210,8 +245,12 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
     keepEdges = edges.filter((e) => ids.has(e.source) && ids.has(e.target));
   }
 
+  // Sin título: el nombre del nodo de la primera regla `ref` (p. ej. una plantilla instanciada)
+  const refRule = model.include?.find((r) => r.ref);
+  const title = model.title ?? (refRule?.ref ? (catalog?.nodes.get(refRule.ref)?.name ?? refRule.ref) : undefined);
+
   return {
-    title: model.title,
+    title,
     description: model.description,
     direction: model.direction ?? 'LR',
     nodes: keep,

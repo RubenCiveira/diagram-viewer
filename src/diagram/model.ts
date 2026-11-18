@@ -104,8 +104,40 @@ export type DiagramModel = {
   edges: DiagramEdge[];
 };
 
-/** Selector de nodos del catálogo (preparado para añadir más criterios) */
-export type IncludeRule = { type: string };
+/**
+ * Selector de nodos del catálogo:
+ * - `type`: todos los nodos de ese tipo;
+ * - `ref`: un nodo concreto (`$self` = el nodo para el que se genera la plantilla), siguiendo
+ *   sus relaciones salientes de `dependencies` y `uses`, y las entrantes (`incoming`), que
+ *   encajen con el patrón `"tipoDeRelación/tipoDeNodo"` (`*` = cualquiera; el tipo de nodo es el
+ *   del otro extremo) e incluyendo los nodos del otro extremo.
+ * `diagram` es una plantilla: cada nodo incluido por la regla abre un subdiagrama generado
+ * con `$self` sustituido por ese nodo.
+ */
+export type IncludeRule = {
+  type?: string;
+  ref?: string;
+  dependencies?: string;
+  uses?: string;
+  /** Relaciones que llegan al nodo `ref` (desde `dependencies` o `uses` de otros) */
+  incoming?: string;
+  diagram?: DiagramModel;
+};
+
+/** Valor que se sustituye por el nodo concreto al instanciar una plantilla de subdiagrama */
+export const SELF_REF = '$self';
+
+/** Instancia una plantilla: cambia cada valor `"$self"` por el id del nodo */
+export function instantiateTemplate(template: DiagramModel, catalogId: string): DiagramModel {
+  return JSON.parse(JSON.stringify(template), (_k, v) => (v === SELF_REF ? catalogId : v));
+}
+
+/** ¿El patrón `tipoDeRelación/tipoDeNodo` encaja? (`*` = cualquiera; sin `/`, sólo se mira la relación) */
+export function matchesRelationPattern(pattern: string | undefined, relationType: string | undefined, nodeType: string): boolean {
+  if (!pattern) return false;
+  const [rel = '*', node = '*'] = pattern.split('/');
+  return (rel === '*' || rel === relationType) && (node === '*' || node === nodeType);
+}
 
 /** Caja que envuelve a los nodos de ciertos tipos */
 export type DiagramGroup = {
@@ -120,7 +152,7 @@ export type DiagramGroup = {
 
 /** Tipos incluidos por un diagrama, sumando `include` y la forma abreviada `types` */
 export function includedTypes(model: Pick<DiagramModel, 'include' | 'types'>): string[] {
-  return [...(model.include ?? []).map((r) => r.type), ...(model.types ?? [])];
+  return [...(model.include ?? []).flatMap((r) => (r.type ? [r.type] : [])), ...(model.types ?? [])];
 }
 
 /** Separador de las rutas de subdiagramas definidos dentro de otro: `frontend.json::login::detalle` */
@@ -179,7 +211,21 @@ export const ZDiagramModel = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
   direction: z.enum(['LR', 'TB']).optional(),
-  include: z.array(z.object({ type: z.string() })).optional(),
+  include: z
+    .array(
+      z.object({
+        type: z.string().optional(),
+        ref: z.string().optional(),
+        dependencies: z.string().optional(),
+        uses: z.string().optional(),
+        incoming: z.string().optional(),
+        // Plantilla de subdiagrama para cada nodo incluido (recursivo)
+        get diagram() {
+          return ZDiagramModel.optional();
+        },
+      }),
+    )
+    .optional(),
   types: z.array(z.string()).optional(),
   groups: z
     .array(

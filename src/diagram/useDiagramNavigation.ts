@@ -2,7 +2,7 @@ import React from 'react';
 import { readUrl, writeUrl, type Viewport } from '../app/urlState';
 import { FileNotFoundError, type Repository } from '../storage';
 import { diagramFileOf } from '../storage/manifest';
-import { CATALOG_FILE, INLINE_SEP, type DiagramModel } from './model';
+import { CATALOG_FILE, INLINE_SEP, instantiateTemplate, type DiagramModel } from './model';
 import { baseName, resolvePath, stripExt } from './paths';
 import { CatalogIndex, resolveDiagram, usesCatalog, type ViewModel } from './resolve';
 
@@ -58,7 +58,10 @@ export function useDiagramNavigation(repo: Repository | null) {
   const titles = React.useRef(new Map<string, string>());
   const request = React.useRef(0);
 
-  /** Lee un diagrama. `fichero::a::b` es el subdiagrama `b` definido dentro del nodo `a` de ese fichero. */
+  /**
+   * Lee un diagrama. `fichero::a::b` es el subdiagrama `b` definido dentro del nodo `a` de ese
+   * fichero; `::@2:mfe-login` es la plantilla de la regla 2 de `include` instanciada para `mfe-login`.
+   */
   const readModel = React.useCallback(
     async (path: string): Promise<DiagramModel> => {
       const [filePath, ...inline] = path.split(INLINE_SEP);
@@ -66,11 +69,22 @@ export function useDiagramNavigation(repo: Repository | null) {
       if (!file) throw new FileNotFoundError(filePath);
       let model = await file.read();
       let title = model.title;
-      for (const id of inline) {
-        const node = model.nodes.find((n) => n.id === id && n.diagram);
-        if (!node) throw new Error(`No existe el subdiagrama «${id}» dentro de «${filePath}»`);
+      for (const segment of inline) {
+        if (segment.startsWith('@')) {
+          const sep = segment.indexOf(':');
+          const index = Number(segment.slice(1, sep));
+          const catalogId = segment.slice(sep + 1);
+          const template = model.include?.[index]?.diagram;
+          if (sep < 0 || !template) throw new Error(`No existe la plantilla de subdiagrama «${segment}» en «${filePath}»`);
+          model = instantiateTemplate(template, catalogId);
+          // Sin título propio, la resolución usa el nombre del nodo en el catálogo
+          title = model.title;
+          continue;
+        }
+        const node = model.nodes.find((n) => n.id === segment && n.diagram);
+        if (!node) throw new Error(`No existe el subdiagrama «${segment}» dentro de «${filePath}»`);
         model = node.diagram!;
-        title = model.title ?? node.name ?? id;
+        title = model.title ?? node.name ?? segment;
       }
       if (title) titles.current.set(path, title);
       return title && !model.title ? { ...model, title } : model;

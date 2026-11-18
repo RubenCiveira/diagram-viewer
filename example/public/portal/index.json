@@ -10,7 +10,11 @@
         "title": "Frontend",
         "description": "Todos los microfrontends del catálogo: propios (`microFront`, `shellUi`), páginas de otros equipos que carga la shell (`ext-microfront`) y componentes de otros equipos que se incrustan (`ext-mfe-component`), con las relaciones entre ellos.",
         "include": [
-          { "type": "microFront" },
+          { "type": "microFront",
+            "diagram": {
+              "description": "El microfrontend con todas sus relaciones: sus dependencias y usos, quién lo carga o lo usa, y los nodos del otro extremo.",
+              "include": [ { "ref": "$self", "dependencies": "*/*", "uses": "*/*", "incoming": "*/*" } ]
+            } },
           { "type": "shellUi" },
           { "type": "ext-microfront" },
           { "type": "ext-mfe-component" }
@@ -31,7 +35,12 @@
       "diagram": {
         "title": "Backend",
         "description": "Gateway, backends y bases de datos del catálogo (`gateway`, `microservice` y `database`) y las relaciones entre ellos.",
-        "include": [ { "type": "gateway" }, { "type": "microservice" }, { "type": "database" } ]
+        "include": [ { "type": "gateway" }, { "type": "microservice",
+            "diagram": {
+              "description": "El servicio con todas sus relaciones: sus dependencias y usos, quién lo carga o lo usa, y los nodos del otro extremo.",
+              "include": [ { "ref": "$self", "dependencies": "*/*", "uses": "*/*", "incoming": "*/*" } ]
+            } }, { "type": "database" } 
+        ]
       } }
   ],
   "edges": [

@@ -112,10 +112,12 @@ export default function App() {
   const activateNode = React.useCallback(
     (node: ViewNode) => {
       const type = findNodeType(node.type, palette);
+      // Nodo incluido con plantilla: abre su subdiagrama (su ficha se ve dentro)
+      if (node.subdiagram) return openDiagram(node.subdiagram, type.label({ name: node.name, props: node.props }));
       if (type.open) Promise.resolve(type.open(node.props, node, viewer)).catch((e) => setNotice(e?.message ?? String(e)));
       else setDetail({ type: 'node', node });
     },
-    [viewer, setDetail, setNotice],
+    [viewer, setDetail, setNotice, openDiagram],
   );
 
   // Retroceso: al diagrama padre o, desde el raíz, al árbol

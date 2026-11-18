@@ -189,11 +189,28 @@ Un nodo `diagram` puede llevar la definición del subdiagrama en `diagram` en ve
   } }
 ```
 
-`include` vale en cualquier diagrama, no solo en los definidos dentro de otro. Cada entrada es un selector; por ahora `{ "type": … }`, preparado para añadir más criterios.
+`include` vale en cualquier diagrama, no solo en los definidos dentro de otro. Cada entrada es un selector:
 
-- Incluye **todos los nodos del catálogo** de esos tipos.
-- Pinta **todas las relaciones del catálogo** entre los nodos presentes.
-- Entre los nodos que traen las referencias (`ref` con `expand`, `outgoing`, `incoming`), deja solo los de esos tipos.
+| Selector | Qué incluye |
+|---|---|
+| `{ "type": "microFront" }` | Todos los nodos del catálogo de ese tipo |
+| `{ "ref": "mfe-login", "dependencies": "*/*", "uses": "*/*", "incoming": "*/*" }` | Ese nodo y las relaciones que encajen con cada patrón `"tipoDeRelación/tipoDeNodo"` (`*` = cualquiera; el tipo de nodo es el del otro extremo), junto con los nodos del otro extremo:<br>· `dependencies` / `uses`: sus relaciones salientes de cada bloque.<br>· `incoming`: las que le llegan desde otros nodos (de sus `dependencies` o `uses`).<br>Ejemplos de patrón: `"call/microservice"`, `"*/api"`, `"config"` (solo el tipo de relación). |
+
+Cualquier selector puede llevar `diagram`, una **plantilla de subdiagrama**: cada nodo que incluye ese selector abre al pulsarlo un subdiagrama generado a partir de la plantilla, cambiando `"$self"` por ese nodo. Estos nodos llevan un distintivo de capas, y dentro del subdiagrama, al pulsarlos, se ve su ficha. En el ejemplo, cada microfrontend de Frontend abre «él con todas sus relaciones, entrantes y salientes, y lo que hay al otro lado»:
+
+```json
+{ "type": "microFront",
+  "diagram": {
+    "include": [ { "ref": "$self", "dependencies": "*/*", "uses": "*/*", "incoming": "*/*" } ]
+  } }
+```
+
+Si la plantilla no tiene `title`, el subdiagrama toma el nombre del nodo. En la URL va como `…::@0:mfe-catalogo` (selector 0 de `include`, para `mfe-catalogo`).
+
+Para los selectores por tipo:
+
+- Pintan **todas las relaciones del catálogo** entre los nodos presentes (los selectores `ref` solo pintan las relaciones que siguen).
+- Entre los nodos que traen los nodos `kind: "ref"` del diagrama (con `expand`, `outgoing`, `incoming`), dejan solo los de esos tipos.
 - Los nodos declarados en el diagrama se pintan siempre.
 - `"types": ["a", "b"]` se sigue aceptando como forma abreviada de `"include": [{ "type": "a" }, { "type": "b" }]`.
 

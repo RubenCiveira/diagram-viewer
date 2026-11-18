@@ -843,3 +843,8 @@ pre {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.dv-flag-sub {
+  background: var(--dv-accent);
+  left: -8px;
+  right: auto;
+}
