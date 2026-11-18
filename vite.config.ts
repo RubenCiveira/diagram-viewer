@@ -29,5 +29,13 @@ export default defineConfig(({ command }) => ({
   // strictPort: si el puerto está ocupado, falla en vez de saltar a otro (que podría tener service workers ajenos)
   server: { port: DEV_PORT, strictPort: true },
   preview: { port: PREVIEW_PORT, strictPort: true },
-  build: { outDir: 'dist', emptyOutDir: true },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      // jsPDF sólo las carga bajo demanda para html() y addSvgAsImage(), que no usamos:
+      // fuera del paquete, el HTML único pesa ~400 KB menos.
+      external: ['html2canvas', 'dompurify', 'canvg'],
+    },
+  },
 }));

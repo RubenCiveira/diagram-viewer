@@ -17,6 +17,8 @@ export function useTheme() {
   const media = React.useMemo(() => matchMedia('(prefers-color-scheme: dark)'), []);
   const [choice, setChoice] = React.useState<Theme | null>(stored);
   const [system, setSystem] = React.useState<Theme>(media.matches ? 'dark' : 'light');
+  /** Tema forzado temporalmente (p. ej. claro mientras se captura para imprimir) */
+  const [override, setOverride] = React.useState<Theme | null>(null);
 
   React.useEffect(() => {
     const on = () => setSystem(media.matches ? 'dark' : 'light');
@@ -24,7 +26,7 @@ export function useTheme() {
     return () => media.removeEventListener('change', on);
   }, [media]);
 
-  const theme = choice ?? system;
+  const theme = override ?? choice ?? system;
   React.useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
@@ -39,5 +41,5 @@ export function useTheme() {
     }
   }, [theme]);
 
-  return { theme, toggle };
+  return { theme, toggle, setOverride };
 }

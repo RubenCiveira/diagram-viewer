@@ -11,6 +11,7 @@ import DetailPanel from '../diagram/ui/DetailPanel';
 import FileTree from '../diagram/ui/FileTree';
 import HeaderPanel from '../diagram/ui/HeaderPanel';
 import { useDiagramNavigation } from '../diagram/useDiagramNavigation';
+import PrintControl from '../print/PrintControl';
 import { baseName, stripExt, type ViewModel, type ViewNode } from '../diagram';
 import { findNodeType } from '../palette';
 import type { DetailTarget, DiagramViewerContext } from '../palette/DiagramElementType';
@@ -31,7 +32,7 @@ function findTarget(view: ViewModel, id: string | undefined): DetailTarget | nul
 }
 
 export default function App() {
-  const { theme, toggle: toggleTheme } = useTheme();
+  const { theme, toggle: toggleTheme, setOverride: setThemeOverride } = useTheme();
   const [storage, setStorage] = React.useState<Storage | null>(null);
   const [gateOpen, setGateOpen] = React.useState(false);
   const [repo, setRepo] = React.useState<Repository | null>(null);
@@ -225,6 +226,14 @@ export default function App() {
               <span className="dv-source" title={`Fuente: ${storage.name()} · ${nav.file}`}>
                 <FolderOpen size={14} /> {nav.file}
               </span>
+              <PrintControl
+                view={nav.view}
+                palette={palette}
+                title={nav.view.title ?? nav.labelOf(current)}
+                source={`${nav.file} › ${nav.path}`}
+                setThemeOverride={setThemeOverride}
+                onError={setNotice}
+              />
               {actions(true)}
             </div>
           </Panel>

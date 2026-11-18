@@ -46,6 +46,16 @@ Todo lo que se ve queda en el hash de la URL, así que al recargar, volver atrá
 
 Cambiar de diagrama crea una entrada en el historial del navegador. Seleccionar, desplazar o hacer zoom la actualiza sin crear entradas nuevas.
 
+### Imprimir (PDF)
+
+El botón de impresora de la barra superior abre un diálogo:
+
+- **Qué imprimir**: el *recuadro actual* (lo que se ve, con el mismo encuadre y zoom) o *todo el diagrama* (ajustado para que quepa).
+- **Inventario**: si se incluye, tras la imagen va una ficha por cada nodo del diagrama, con nombre, tipo, id, descripción, propiedades, avisos y errores, y sus relaciones (`->` salientes, `<-` entrantes). Con inventario el PDF es vertical.
+- **Orientación** (solo sin inventario): apaisada o vertical.
+
+El PDF (A4) se descarga directamente con el título del diagrama como nombre. La imagen se genera siempre en tema claro.
+
 ## Formato
 
 La carpeta contiene `index.json` (el índice de diagramas) y una carpeta por diagrama, cada una con su diagrama raíz, sus subdiagramas y, opcionalmente, su `catalog.json`:
