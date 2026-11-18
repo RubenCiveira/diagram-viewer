@@ -114,13 +114,14 @@ function buildView(
       view.tags = [`Catálogo: ${id}`, ...(node.origin.imported ? ['Importado por una relación'] : [])];
       view.footer = node.origin.imported ? `catálogo › ${id}` : view.footer;
       const shown = new Set(model.edges.map((e) => e.relationId).filter(Boolean));
-      const label = (cid: string) => {
+      const via = (through?: string) => (through ? ` (vía ${label(through)})` : '');
+      const label = (cid: string): string => {
         const c = catalog.nodes.get(cid);
         return c ? (c.name ?? findNodeType(c.type, palette).label({ name: c.name, props: c.props ?? {} })) : cid;
       };
       view.relations = [
-        ...(catalog.outgoing.get(id) ?? []).map((r) => ({ dir: 'out' as const, other: label(r.target), type: r.type, label: r.label, shown: shown.has(r.id), uses: r.uses })),
-        ...(catalog.incoming.get(id) ?? []).map((r) => ({ dir: 'in' as const, other: label(r.source), type: r.type, label: r.label, shown: shown.has(r.id), uses: r.uses })),
+        ...(catalog.outgoing.get(id) ?? []).map((r) => ({ dir: 'out' as const, other: label(r.target) + via(r.through), type: r.type, label: r.label, shown: shown.has(r.id), uses: r.uses })),
+        ...(catalog.incoming.get(id) ?? []).map((r) => ({ dir: 'in' as const, other: label(r.source) + via(r.through), type: r.type, label: r.label, shown: shown.has(r.id), uses: r.uses })),
       ];
     }
     return view;
@@ -134,6 +135,10 @@ function buildView(
   const detail = edgeType?.detail?.(edge.props ?? {}, ctx) ?? { description: edge.description, fields: [] };
   if (edge.technology) detail.fields = [{ label: 'Tecnología', value: edge.technology }, ...detail.fields];
   if (edge.type) detail.fields = [{ label: 'Tipo de relación', value: edge.type }, ...detail.fields];
+  if (edge.via) {
+    const via = model.nodes.find((n) => n.id === edge.via);
+    detail.fields = [{ label: 'Pasa por', value: via ? name(via) : edge.via }, ...detail.fields];
+  }
   return {
     tags: [...(edge.uses ? ['Uso (acoplamiento fuerte)'] : []), ...(edge.relationId ? [`Catálogo: ${edge.relationId}`] : [])],
     icon: <Link2 size={18} />,

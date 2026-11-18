@@ -9,7 +9,7 @@
         {"target": "mfe-perfil", "type": "loads"},
         {"target": "mfe-soporte", "type": "loads"},
         {"target": "cfg-shell", "type": "config"},
-        {"target": "bff-shell", "type": "call", "label": "HTTPS"},
+        {"target": "bff-shell", "type": "call", "label": "HTTPS", "through": "gateway"},
         {"target": "datos-usuario", "type": "call", "label": "HTTPS"},
         {"target": "ext-cmp-chat", "type": "loads"},
         {"target": "ext-cmp-cookies", "type": "loads"},
@@ -24,38 +24,38 @@
     {"id": "mfe-login", "type": "microFront", "name": "Login", "props": {"route": "/login", "remoteEntryUrl": "https://cdn.portal.example.com/login/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
       "dependencies": [
         {"target": "cfg-login", "type": "config"},
-        {"target": "bff-login", "type": "call", "label": "HTTPS"}
+        {"target": "bff-login", "type": "call", "label": "HTTPS", "through": "gateway"}
       ]},
     {"id": "mfe-catalogo", "type": "microFront", "name": "Catálogo", "props": {"route": "/catalogo", "remoteEntryUrl": "https://cdn.portal.example.com/catalogo/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
       "dependencies": [
         {"target": "cfg-catalogo", "type": "config"},
-        {"target": "bff-catalogo", "type": "call", "label": "HTTPS"},
+        {"target": "bff-catalogo", "type": "call", "label": "HTTPS", "through": "gateway"},
         {"target": "ext-cmp-buscador", "type": "embeds"}
       ]},
     {"id": "mfe-carrito", "type": "microFront", "name": "Carrito", "props": {"route": "/carrito", "remoteEntryUrl": "https://cdn.portal.example.com/carrito/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
       "dependencies": [
         {"target": "cfg-carrito", "type": "config"},
-        {"target": "bff-carrito", "type": "call", "label": "HTTPS"},
+        {"target": "bff-carrito", "type": "call", "label": "HTTPS", "throught": "gateway", "through": "gateway"},
         {"target": "ext-cmp-pasarela", "type": "embeds"}
       ]},
     {"id": "mfe-pedidos", "type": "microFront", "name": "Pedidos", "props": {"route": "/pedidos", "remoteEntryUrl": "https://cdn.portal.example.com/pedidos/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
       "dependencies": [
         {"target": "cfg-pedidos", "type": "config"},
-        {"target": "bff-pedidos", "type": "call", "label": "HTTPS"},
+        {"target": "bff-pedidos", "type": "call", "label": "HTTPS", "through": "gateway"},
         {"target": "datos-usuario", "type": "call", "label": "HTTPS"},
         {"target": "ext-cmp-tiendas", "type": "embeds"}
       ]},
     {"id": "mfe-perfil", "type": "microFront", "name": "Perfil", "props": {"route": "/perfil", "remoteEntryUrl": "https://cdn.portal.example.com/perfil/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
       "dependencies": [
         {"target": "cfg-perfil", "type": "config"},
-        {"target": "bff-perfil", "type": "call", "label": "HTTPS"},
+        {"target": "bff-perfil", "type": "call", "label": "HTTPS", "through": "gateway"},
         {"target": "datos-usuario", "type": "call", "label": "HTTPS"},
         {"target": "ext-cmp-fidelizacion", "type": "embeds"}
       ]},
     {"id": "mfe-soporte", "type": "microFront", "name": "Soporte", "props": {"route": "/soporte", "remoteEntryUrl": "https://cdn.portal.example.com/soporte/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
       "dependencies": [
         {"target": "cfg-soporte", "type": "config"},
-        {"target": "bff-soporte", "type": "call", "label": "HTTPS"},
+        {"target": "bff-soporte", "type": "call", "label": "HTTPS", "through": "gateway"},
         {"target": "ext-cmp-chat", "type": "embeds"},
         {"target": "ext-cmp-tiendas", "type": "embeds"}
       ]},

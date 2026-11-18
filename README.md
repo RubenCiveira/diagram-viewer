@@ -116,6 +116,19 @@ Un nodo tiene dos bloques de aristas salientes, con el mismo formato:
 
 - Las reglas de las referencias (`expand`, `outgoing`, `incoming`) e `include` tratan los usos igual que las dependencias, filtrando por su `type`.
 - En un diagrama, una arista también puede marcarse como uso con `"uses": true`.
+
+#### Relaciones a través de otro nodo (`through`)
+
+Una dependencia o un uso puede pasar por un nodo intermedio:
+
+```json
+{ "target": "bff-carrito", "type": "call", "label": "HTTPS", "through": "gateway" }
+```
+
+- Nunca se pinta la flecha directa: siempre origen → intermedio → destino (Carrito → API Gateway → bff-carrito). La etiqueta va en el primer tramo.
+- Pasa igual se pinte como relación saliente o entrante: el intermedio siempre aparece en medio.
+- Si ya hay otra arista entre el intermedio y el destino (por ejemplo, la `route` del gateway hacia el bff), se pinta esa y no se duplica.
+- La ficha de cada tramo muestra «Pasa por», y la lista de relaciones de un nodo, «(vía API Gateway)».
 - En un diagrama de arriba abajo (`direction: "TB"`) los usos van hacia la derecha, para que siempre se distingan del flujo principal.
 
 ### Diagramas

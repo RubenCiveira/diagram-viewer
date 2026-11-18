@@ -266,6 +266,11 @@ export const CATALOG_FILE = 'catalog.json';
 /** Arista saliente de un nodo del catálogo */
 export type CatalogDependency = {
   target: string;
+  /**
+   * Nodo intermedio por el que pasa la relación (p. ej. el gateway entre un mfe y su bff).
+   * Nunca se pinta directa: siempre origen → intermedio → destino.
+   */
+  through?: string;
   /** Tipo de relación: sirve para filtrar al expandir referencias (config, call…) */
   type?: string;
   kind?: EdgeKind;
@@ -299,6 +304,9 @@ export type CatalogModel = {
 
 const ZDependency = z.object({
   target: z.string(),
+  through: z.string().optional(),
+  // Variante con la errata habitual; se normaliza a `through`
+  throught: z.string().optional(),
   type: z.string().optional(),
   kind: z.enum(['lateral', 'parentChild']).optional(),
   label: z.string().optional(),
@@ -322,14 +330,20 @@ export const ZCatalogModel = z.object({
   ),
 });
 
+/** `throught` → `through` */
+function normDep(d: CatalogDependency & { throught?: string }): CatalogDependency {
+  const { throught, ...rest } = d;
+  return { ...rest, through: d.through ?? throught };
+}
+
 export function tryParseCatalog(input: unknown): { ok: true; data: CatalogModel } | { ok: false; error: string } {
   const parsed = ZCatalogModel.safeParse(input);
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
   const nodes = parsed.data.nodes as CatalogNode[];
   const ids = new UniqueIds();
   const relations: CatalogRelation[] = nodes.flatMap((n) => [
-    ...(n.dependencies ?? []).map((d) => ({ ...d, source: n.id, id: ids.next(n.id, d.target) })),
-    ...(n.uses ?? []).map((d) => ({ ...d, source: n.id, id: ids.next(n.id, d.target), uses: true })),
+    ...(n.dependencies ?? []).map((d) => ({ ...normDep(d), source: n.id, id: ids.next(n.id, d.target) })),
+    ...(n.uses ?? []).map((d) => ({ ...normDep(d), source: n.id, id: ids.next(n.id, d.target), uses: true })),
   ]);
   return { ok: true, data: { version: parsed.data.version, nodes, relations } };
 }

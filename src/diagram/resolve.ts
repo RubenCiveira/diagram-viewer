@@ -43,6 +43,8 @@ export type ViewNode = {
 };
 
 export type ViewEdge = DiagramEdge & {
+  /** Tramo de una relación que pasa por un nodo intermedio (`through`) */
+  via?: string;
   /** Calculado: from:{origen}-to:{destino} (con #n si el par se repite) */
   id: string;
   /** Relación del catálogo de la que procede, si no está en el diagrama */
@@ -153,6 +155,32 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
       const dst = endpoint(rel.target, !!rule.import);
       if (!src || !dst) return;
       included.add(rel.id);
+      // Por un intermedio: dos tramos (origen → intermedio → destino), nunca la flecha directa
+      if (rel.through) {
+        if (!catalog.nodes.has(rel.through)) {
+          warnings.push(`Relación ${rel.id}: el intermedio «${rel.through}» no existe en el catálogo`);
+          return;
+        }
+        const via = endpoint(rel.through, true)!;
+        if (via.origin.kind === 'ref' && via.origin.imported) via.origin = { ...via.origin, imported: false };
+        const leg = (from: ViewNode, to: ViewNode, first: boolean): ViewEdge => ({
+          id: ids.next(from.id, to.id),
+          relationId: rel.id,
+          via: via.id,
+          source: from.id,
+          target: to.id,
+          kind: rel.kind,
+          uses: rel.uses,
+          type: rel.type,
+          label: first ? rel.label : undefined,
+          description: rel.description,
+          technology: first ? rel.technology : undefined,
+          props: rel.props,
+        });
+        if (!drawn.has(edgeId(src.id, via.id))) edges.push(leg(src, via, true));
+        if (!drawn.has(edgeId(via.id, dst.id))) edges.push(leg(via, dst, false));
+        return;
+      }
       // Si el diagrama ya dibuja una arista entre esos dos nodos, prevalece la del diagrama
       if (drawn.has(edgeId(src.id, dst.id))) return;
       edges.push({
@@ -234,6 +262,26 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
   }
 
   if ((includeTypes.length || model.include?.length) && !catalog) warnings.push('"include" necesita el catálogo de la carpeta para saber qué nodos pintar');
+
+  // Tramos por un intermedio que repiten otra arista entre los mismos nodos: se queda la otra
+  // (p. ej. la ruta gateway → bff ya existe); entre tramos iguales, sólo el primero
+  {
+    const pair = (e: ViewEdge) => edgeId(e.source, e.target);
+    const direct = new Set(edges.filter((e) => !e.via).map(pair));
+    const seen = new Set<string>();
+    for (let i = edges.length - 1; i >= 0; i--) if (edges[i].via && direct.has(pair(edges[i]))) edges.splice(i, 1);
+    for (let i = 0; i < edges.length; i++) {
+      const e = edges[i];
+      if (!e.via) continue;
+      if (seen.has(pair(e))) edges.splice(i--, 1);
+      else seen.add(pair(e));
+    }
+  }
+  // Ids definitivos (sin huecos por los tramos descartados): from:origen-to:destino[#n]
+  {
+    const finalIds = new UniqueIds();
+    for (const e of edges) e.id = finalIds.next(e.source, e.target);
+  }
 
   // Tipos incluidos: filtra los nodos importados (los declarados se pintan siempre) y sus aristas
   let keep = nodes;
