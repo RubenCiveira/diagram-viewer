@@ -38,7 +38,15 @@
         "include": [ { "type": "gateway" }, { "type": "microservice",
             "diagram": {
               "description": "El servicio con todas sus relaciones: sus dependencias y usos, quién lo carga o lo usa, y los nodos del otro extremo.",
-              "include": [ { "ref": "$self", "dependencies": "*/*", "uses": "*/*", "incoming": "*/*" } ]
+              "include": [ { 
+                "ref": "$self", "dependencies": "*/*", "uses": "*/*", "incoming": "*/*"
+                } ],
+                "groups": [
+                   { "name": "Internal", "types": ["microservice"], "color": "#8b5cf6", "layout": "box",
+                   "description": "Microfrontends propios" },
+                   { "name": "Apis", "types": ["api"], "color": "#8b5cf6", "layout": "box",
+                   "description": "Microfrontends propios" }
+                 ]
             } }, { "type": "database" } 
         ]
       } }
