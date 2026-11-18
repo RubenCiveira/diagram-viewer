@@ -281,7 +281,7 @@ Un subdiagrama definido dentro usa el catálogo de su diagrama raíz y puede con
 
 ## Arquitectura
 
-Sigue las tres interfaces de `editor de referencia`, recortadas a lo que necesita un visor:
+Se organiza en tres interfaces, pensadas para un visor:
 
 | Interfaz | Dónde | Qué hace |
 |---|---|---|
