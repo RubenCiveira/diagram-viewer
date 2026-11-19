@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "mfe-shell", "type": "shellUi", "name": "Shell", "description": "Contenedor del portal: menú, sesión y carga del resto de microfrontends.", "props": {"routeBase": "/", "authRequired": true},
+      "dependencies": [
+        {"target": "mfe-catalogo", "type": "loads"},
+        {"target": "mfe-carrito", "type": "loads"},
+        {"target": "mfe-pedidos", "type": "loads"},
+        {"target": "mfe-perfil", "type": "loads"},
+        {"target": "mfe-soporte", "type": "loads"},
+        {"target": "cfg-shell", "type": "config"},
+        {"target": "ext-cmp-chat", "type": "loads"},
+        {"target": "ext-cmp-cookies", "type": "loads"},
+        {"target": "ext-mf-blog", "type": "loads"},
+        {"target": "ext-mf-ofertas", "type": "loads"},
+        {"target": "ext-mf-tarjetas-regalo", "type": "loads"},
+        {"target": "ext-mf-empleo", "type": "loads"}
+      ],
+      "uses": [
+        {"target": "mfe-login", "type": "guard", "label": "protege", "description": "La shell no muestra nada hasta que login valida la sesión: si no hay sesión, redirige a login."}
+      ],
+      "nodes": [
+        {"id": "menu", "type": "screen", "name": "Menú principal", "props": {"route": "/", "component": "MainMenu"},
+          "dependencies": [
+            {"target": "bff-shell/cargar-menu", "type": "call", "label": "HTTPS", "through": "gateway"}
+          ]},
+        {"id": "cabecera-usuario", "type": "screen", "name": "Cabecera de usuario", "props": {"component": "UserHeader"},
+          "dependencies": [
+            {"target": "datos-usuario/consultar-perfil", "type": "call", "label": "HTTPS", "through": "gateway"}
+          ]},
+        {"id": "panel-notificaciones", "type": "screen", "name": "Panel de notificaciones", "props": {"component": "NotificationsPanel"},
+          "dependencies": [
+            {"target": "bff-shell/listar-notificaciones", "type": "call", "label": "HTTPS", "through": "gateway"}
+          ]}
+      ]},
+    {"id": "cfg-shell", "type": "remoteConfig", "name": "config shell", "props": {"source": "https://config.portal.example.com/shell.json", "format": "json", "refresh": "5 min", "flags": ["menu-v2", "tema-oscuro"]}}
+  ]
+}

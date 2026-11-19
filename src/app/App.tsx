@@ -245,6 +245,7 @@ export default function App() {
           path={nav.path}
           palette={palette}
           onClose={() => setDetail(null)}
+          onOpenDiagram={openDiagram}
         />
         <LoadingOverlay show={nav.loading} />
         {(nav.error || notice?.loadId === nav.loadId) && (

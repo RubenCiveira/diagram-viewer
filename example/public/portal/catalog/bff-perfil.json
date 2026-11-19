@@ -1,0 +1,37 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "bff-perfil", "type": "microservice", "name": "bff-perfil", "description": "Backend for frontend del microfrontend **Perfil**.", "props": {"tech": "quarkus", "baseUrl": "https://bff-perfil.portal.internal"},
+      "nodes": [
+        {"id": "actualizar-datos", "type": "useCase", "name": "Actualizar datos personales", "props": {"trigger": "REST", "endpoint": "PUT /profile"},
+          "dependencies": [
+            {"target": "clientes-client", "type": "call"},
+            {"target": "usuario-client", "type": "call"}
+          ]},
+        {"id": "guardar-preferencias", "type": "useCase", "name": "Guardar preferencias", "props": {"trigger": "REST", "endpoint": "PUT /profile/preferences"},
+          "dependencies": [
+            {"target": "preferencias-client", "type": "call"}
+          ]},
+        {"id": "gestionar-consentimientos", "type": "useCase", "name": "Gestionar consentimientos", "props": {"trigger": "REST", "endpoint": "PUT /profile/consents"},
+          "dependencies": [
+            {"target": "consentimientos-client", "type": "call"}
+          ]},
+        {"id": "clientes-client", "type": "serviceGateway", "name": "CustomersClient", "props": {"port": "Customers"},
+          "dependencies": [
+            {"target": "api-clientes", "type": "config", "label": "REST"}
+          ]},
+        {"id": "preferencias-client", "type": "serviceGateway", "name": "PreferencesClient", "props": {"port": "UserPreferences"},
+          "dependencies": [
+            {"target": "api-preferencias", "type": "config", "label": "REST"}
+          ]},
+        {"id": "consentimientos-client", "type": "serviceGateway", "name": "ConsentsClient", "props": {"port": "Consents"},
+          "dependencies": [
+            {"target": "api-consentimientos", "type": "config", "label": "REST"}
+          ]},
+        {"id": "usuario-client", "type": "serviceGateway", "name": "UserDataClient", "props": {"port": "UserProfile"},
+          "dependencies": [
+            {"target": "datos-usuario/actualizar-perfil", "type": "call", "label": "REST"}
+          ]}
+      ]}
+  ]
+}

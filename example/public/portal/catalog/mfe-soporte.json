@@ -1,0 +1,23 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "mfe-soporte", "type": "microFront", "name": "Soporte", "props": {"route": "/soporte", "remoteEntryUrl": "https://cdn.portal.example.com/soporte/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
+      "dependencies": [
+        {"target": "cfg-soporte", "type": "config"}
+      ],
+      "nodes": [
+        {"id": "centro-ayuda", "type": "screen", "name": "Centro de ayuda", "props": {"route": "/soporte"},
+          "dependencies": [
+            {"target": "bff-soporte/buscar-faq", "type": "call", "label": "HTTPS", "through": "gateway"},
+            {"target": "ext-cmp-tiendas", "type": "embeds"}
+          ]},
+        {"id": "mis-tickets", "type": "screen", "name": "Mis consultas", "props": {"route": "/soporte/tickets"},
+          "dependencies": [
+            {"target": "bff-soporte/listar-tickets", "type": "call", "label": "HTTPS", "through": "gateway"},
+            {"target": "bff-soporte/abrir-ticket", "type": "call", "label": "HTTPS", "through": "gateway"},
+            {"target": "ext-cmp-chat", "type": "embeds"}
+          ]}
+      ]},
+    {"id": "cfg-soporte", "type": "remoteConfig", "name": "config soporte", "props": {"source": "https://config.portal.example.com/soporte.json", "format": "json", "refresh": "5 min", "flags": ["chat-en-vivo"]}}
+  ]
+}

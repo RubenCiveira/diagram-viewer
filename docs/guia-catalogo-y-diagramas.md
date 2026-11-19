@@ -22,6 +22,7 @@ Una **carpeta de diagramas** contiene:
 └── <ruta>/<diagrama>/
     ├── index.json             Diagrama raíz de ese diagrama
     ├── catalog.json           Catálogo: nodos y relaciones reutilizables
+    ├── catalog/…json          Opcional: partes del catálogo incluidas desde catalog.json
     └── …otros .json           Subdiagramas (en esta carpeta o subcarpetas)
 ```
 
@@ -103,6 +104,7 @@ Uno por carpeta de diagrama, junto a su `index.json`. Lo usan el diagrama raíz 
 | `props` | no | Propiedades del tipo (ver [§5](#5-tipos-de-nodo-de-la-paleta)). Se aceptan claves extra; se muestran tal cual. |
 | `dependencies` | no | Relaciones salientes **normales** (llama a, carga, configura…). Se dibujan como flecha **hacia la derecha**. |
 | `uses` | no | Relaciones salientes de **acoplamiento fuerte** (no funciona sin el otro). Se dibujan **hacia abajo**, gruesas y destacadas. |
+| `nodes` | no | **Nodos internos** (casos de uso, gateways…), con este mismo formato. Ver [§3.5](#35-nodos-internos-nodes). |
 
 ### 3.2 Relación (entrada de `dependencies` o `uses`)
 
@@ -138,6 +140,80 @@ El atajo `expand: "config"` de los diagramas (ver [§4.3](#43-expandir-una-refer
 - Cada `target` y cada `through` **DEBE** existir en el mismo catálogo.
 - Entre dos nodos puede haber varias relaciones de distinto `type`.
 - Si una relación pasa por un intermediario (p. ej. mfe → gateway → bff), declárala **una vez** con `through`. El intermediario **DEBERÍA** tener además su propia relación hacia el destino (p. ej. `gateway` → `bff` con `type: "route"`), que el visor reutiliza sin duplicar flechas.
+
+### 3.4 Dividir el catálogo en varios ficheros (`include`)
+
+Un catálogo grande puede repartirse en varios ficheros. `catalog.json` sigue siendo el punto de entrada y lista en `include` los demás:
+
+```json
+{
+  "version": "1.0",
+  "include": ["catalog/pagos.json", "catalog/pedidos.json"],
+  "nodes": [
+    { "id": "gateway", "type": "gateway", "name": "API Gateway",
+      "dependencies": [ { "target": "pagos", "type": "call" } ] }
+  ]
+}
+```
+
+`catalog/pagos.json` tiene **el mismo formato** que un catálogo (`version` es opcional):
+
+```json
+{ "nodes": [ { "id": "pagos", "type": "microservice", "name": "Pagos" } ] }
+```
+
+| Campo | Obligatorio | Descripción |
+|---|---|---|
+| `include` | no | Rutas de otros ficheros de catálogo, **relativas al fichero que las declara** (`/` = raíz de la carpeta de diagramas). |
+
+Reglas:
+
+- El visor suma los nodos de todos los ficheros en un **único catálogo**: primero los del propio fichero y luego los de cada `include`, en orden y en profundidad. Las relaciones se calculan sobre el conjunto, así que un `target` o un `through` **PUEDE** apuntar a un nodo de otro fichero.
+- Un fichero incluido **PUEDE** tener su propio `include`. Si un fichero llega por dos caminos, se suma una sola vez; los ciclos se ignoran con un aviso.
+- Los `id` **DEBEN** ser únicos en el conjunto de ficheros. Si uno se repite, gana la primera definición y se muestra un aviso.
+- Si un fichero incluido no existe o no es válido, el visor muestra un aviso y usa el resto.
+- Pon las partes en una subcarpeta (p. ej. `catalog/`) y **NO** las llames `index.json` ni `catalog.json`: así no se confunden con diagramas ni con el catálogo de otra carpeta.
+- Reparte por dominio o por equipo (pagos, pedidos, frontends…), no por tipo de nodo: así cada fichero describe una zona del sistema con sus relaciones.
+
+### 3.5 Nodos internos (`nodes`)
+
+Un nodo puede describir su estructura interna: un microservicio, sus **casos de uso** (`useCase`) y sus **gateways** (`serviceGateway`, el acceso a una base de datos o a otro sistema). Los internos son nodos con el mismo formato (`id`, `type`, `name`, `props`, `dependencies`, `uses` y, a su vez, `nodes`) y se relacionan entre sí y con el resto del catálogo:
+
+```json
+{ "id": "pagos", "type": "microservice", "name": "Pagos",
+  "nodes": [
+    { "id": "cobrar", "type": "useCase", "name": "Cobrar pedido",
+      "dependencies": [ { "target": "stripe-gw", "type": "call" } ] },
+    { "id": "stripe-gw", "type": "serviceGateway", "name": "StripeGateway",
+      "dependencies": [ { "target": "stripe", "type": "config" } ] }
+  ] }
+```
+
+**Ids.** El id completo de un interno es `<padre>/<id>` (`pagos/cobrar`; con más niveles, `a/b/c`). Por eso ningún `id` **PUEDE** llevar `/`. El `id` de un interno **DEBE** ser único entre sus hermanos.
+
+**A qué apunta un `target` (o `through`).** Desde un nodo interno se busca primero un **hermano** (`stripe-gw` → `pagos/stripe-gw`), luego subiendo de contenedor en contenedor y, si no, el id tal cual (`stripe`). Desde cualquier nodo se puede apuntar a un interno de otro con su id completo:
+
+```json
+{ "id": "crear-pedido", "type": "useCase",
+  "dependencies": [ { "target": "pagos/cobrar", "type": "call" } ] }
+```
+
+**Cómo se ven.**
+
+- Fuera de su contenedor, los internos **no se pintan**: sus relaciones con el exterior se dibujan desde/hacia el contenedor. Así el contenedor tiene, **sin declararlas**, las dependencias y las entrantes de sus internos:
+  - Salientes: el caso de uso usa un gateway y el gateway depende de la base de datos ⇒ se ve `microservicio → base de datos`.
+  - Entrantes: una pantalla de un microfront llama a un caso de uso a través del gateway (`"target": "pagos/cobrar", "through": "gateway"`) ⇒ se ve `microfront → gateway → pagos`.
+- Fuera de un detalle, estas relaciones derivadas cuentan **como si las declarase el contenedor**: las siguen las reglas de las referencias (`expand`, `outgoing`, `incoming`) y de `include` (por `ref`, y por tipo entre los nodos presentes), con su tipo de relación.
+- Si varias acaban entre los mismos dos nodos con el mismo tipo, se pinta una; si el contenedor ya tiene su propia relación con ese nodo, se queda la suya.
+- Al pulsar el contenedor se abre su ficha como siempre, con un botón **Ver detalle** (el nodo lleva un distintivo de lupa). El detalle es un diagrama generado con: sus nodos internos, las relaciones entre ellos, las que salen de ellos hacia fuera y las que les llegan de fuera (también a través de un `through`), con los nodos del otro extremo (de borde discontinuo; si son internos de otro nodo, se ve su contenedor).
+- El detalle trabaja **solo con relaciones de los internos**. Una relación que llega al contenedor entero (`gateway → pagos`) o que sale de él no aparece, porque no dice a qué interno va: para que se vea, apunta al interno (`"target": "pagos/cobrar"`) o declárala en él.
+- En la ficha del contenedor, «Relaciones en el catálogo» incluye las de sus internos, indicando cuál interviene.
+- Un diagrama puede referenciar un interno directamente (`"ref": "pagos/cobrar"`) o pintar el detalle de un nodo con el selector `detail` ([§4.4](#44-include-vistas-por-tipo-o-por-nodo)).
+
+Recomendaciones:
+
+- Lleva las relaciones con el exterior a los internos que las tienen (la base de datos, al gateway que la usa; la API, al caso de uso que la expone) en vez de declararlas también en el contenedor: el contenedor ya las muestra.
+- Describe los internos solo donde aporten (servicios complejos o críticos); el resto puede quedarse sin `nodes`.
 
 ---
 
@@ -261,6 +337,12 @@ Un nodo `ref` pinta, por defecto, **solo ese nodo**. Para traer relaciones del c
 - Patrón `"tipoDeRelación/tipoDeNodo"`, con `*` como comodín. El tipo de nodo es el del **otro extremo**. Ejemplos: `"*/*"` (todo), `"call/microservice"`, `"*/api"`, `"config"` (solo el tipo de relación).
 - Solo pinta las relaciones que sigue, más los nodos del otro extremo.
 
+**Detalle interno de un nodo** — sus nodos internos ([§3.5](#35-nodos-internos-nodes)), sus relaciones y las que les llegan; es lo que abre el botón «Ver detalle»:
+
+```json
+"include": [ { "detail": "pagos" } ]
+```
+
 `"types": ["a", "b"]` es una forma abreviada (antigua) de `"include": [{ "type": "a" }, { "type": "b" }]`. Usa `include`.
 
 ### 4.5 Subdiagramas
@@ -339,6 +421,9 @@ Las flechas tienen prioridad: primero se colocan los nodos según sus relaciones
 | `gatewayProxy` | Regla de proxy del gateway | `path`, `targetUrl`, `rewrite`, `cors` (bool), `cacheTtl` (entero) |
 | `remoteOAuth` | Proxy de autenticación OAuth | `path`, `targetUrl`, `rewrite`, `cors` (bool), `cacheTtl` (entero) |
 | `microservice` | Servicio backend (incluidos BFF) | `tech`: `quarkus` \| `spring` \| `php-slim` \| `node`, `baseUrl` |
+| `useCase` | Caso de uso de un servicio (nodo interno, [§3.5](#35-nodos-internos-nodes)) | `trigger` (REST, evento, batch…), `endpoint`, `transactional` (bool) |
+| `screen` | Pantalla de un microfrontend (nodo interno) | `route`, `component` |
+| `serviceGateway` | Gateway (adaptador) de un servicio hacia una base de datos u otro sistema (nodo interno) | `port` (interfaz), `client` (librería) |
 | `api` | API (contrato) que consume un servicio | `protocol`: `http` \| `https` \| `grpc`, `auth`: `none` \| `basic` \| `oauth`, `basePath`, `version`, `specUrl` |
 | `database` | Base de datos | `tech`, `baseUrl` |
 | `externalService` | Servicio REST externo | `type`, `name`, `endpoint`, `notes` |
@@ -454,9 +539,10 @@ Antes de dar por terminado un conjunto de diagramas, verifica:
 - [ ] Todos los ficheros son JSON válido (sin comentarios ni comas finales).
 - [ ] El `index.json` de la raíz es un índice (`diagrams`) y contiene la nueva carpeta.
 - [ ] Cada carpeta de diagrama tiene su `index.json` y, si usa `ref` o `include`, su `catalog.json`.
-- [ ] Los `id` del catálogo son únicos; los `id` de los nodos de cada diagrama son únicos en ese diagrama.
+- [ ] Los `id` del catálogo son únicos (en todos sus ficheros, si usa `include`); los `id` de los nodos de cada diagrama son únicos en ese diagrama.
 - [ ] Los `type` de nodo son de [§5](#5-tipos-de-nodo-de-la-paleta) salvo que ninguno encaje, y los tipos nuevos se escriben igual en todo el catálogo.
-- [ ] Cada `target` y `through` del catálogo, y cada `ref` de los diagramas, existe en el catálogo de esa carpeta.
+- [ ] Cada `target` y `through` del catálogo, y cada `ref` de los diagramas, existe en el catálogo de esa carpeta (los internos, como `<padre>/<id>` o como hermanos).
+- [ ] Ningún `id` del catálogo lleva `/`, y los de los nodos internos son únicos entre hermanos.
 - [ ] Cada `source`/`target` de `edges` es un `id` de nodo **del propio diagrama**.
 - [ ] Ninguna arista lleva `id`.
 - [ ] Las relaciones entrantes **no** están duplicadas en el nodo de destino.

@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "mfe-perfil", "type": "microFront", "name": "Perfil", "props": {"route": "/perfil", "remoteEntryUrl": "https://cdn.portal.example.com/perfil/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
+      "dependencies": [
+        {"target": "cfg-perfil", "type": "config"}
+      ],
+      "nodes": [
+        {"id": "datos-personales", "type": "screen", "name": "Datos personales", "props": {"route": "/perfil"},
+          "dependencies": [
+            {"target": "bff-perfil/actualizar-datos", "type": "call", "label": "HTTPS", "through": "gateway"},
+            {"target": "datos-usuario/consultar-perfil", "type": "call", "label": "HTTPS", "through": "gateway"},
+            {"target": "ext-cmp-fidelizacion", "type": "embeds"}
+          ]},
+        {"id": "preferencias", "type": "screen", "name": "Preferencias", "props": {"route": "/perfil/preferencias"},
+          "dependencies": [
+            {"target": "bff-perfil/guardar-preferencias", "type": "call", "label": "HTTPS", "through": "gateway"}
+          ]},
+        {"id": "privacidad", "type": "screen", "name": "Privacidad", "props": {"route": "/perfil/privacidad"},
+          "dependencies": [
+            {"target": "bff-perfil/gestionar-consentimientos", "type": "call", "label": "HTTPS", "through": "gateway"}
+          ]}
+      ]},
+    {"id": "cfg-perfil", "type": "remoteConfig", "name": "config perfil", "props": {"source": "https://config.portal.example.com/perfil.json", "format": "json", "refresh": "5 min", "flags": ["borrar-cuenta"]}}
+  ]
+}

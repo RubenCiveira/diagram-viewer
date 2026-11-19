@@ -1,5 +1,5 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { CircleAlert, Layers, TriangleAlert } from 'lucide-react';
+import { CircleAlert, Layers, TriangleAlert, ScanSearch } from 'lucide-react';
 import type { GenericFlowNode, HandleId } from './toFlow';
 
 type HandleDef = { id: HandleId; type: 'source' | 'target'; position: Position };
@@ -38,6 +38,11 @@ export default function GenericNode({ data, selected }: NodeProps<GenericFlowNod
       {node.subdiagram && (
         <span className="dv-flag dv-flag-sub" title="Abre su subdiagrama">
           <Layers size={12} />
+        </span>
+      )}
+      {node.detail && !node.subdiagram && (
+        <span className="dv-flag dv-flag-sub" title="Tiene detalle interno (botón «Ver detalle» de su ficha)">
+          <ScanSearch size={12} />
         </span>
       )}
       {!!node.warns?.length && (

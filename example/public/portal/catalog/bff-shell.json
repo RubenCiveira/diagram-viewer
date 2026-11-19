@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "bff-shell", "type": "microservice", "name": "bff-shell", "description": "Backend for frontend del microfrontend **Shell**.", "props": {"tech": "node", "baseUrl": "https://bff-shell.portal.internal"},
+      "nodes": [
+        {"id": "cargar-menu", "type": "useCase", "name": "Cargar menú", "props": {"trigger": "REST", "endpoint": "GET /menu"},
+          "dependencies": [
+            {"target": "auth-client", "type": "call"},
+            {"target": "preferencias-client", "type": "call"},
+            {"target": "usuario-client", "type": "call"}
+          ]},
+        {"id": "listar-notificaciones", "type": "useCase", "name": "Listar notificaciones", "props": {"trigger": "REST", "endpoint": "GET /notifications"},
+          "dependencies": [
+            {"target": "notificaciones-client", "type": "call"}
+          ]},
+        {"id": "auth-client", "type": "serviceGateway", "name": "AuthClient", "props": {"port": "SessionValidator"},
+          "dependencies": [
+            {"target": "api-auth", "type": "config", "label": "REST"}
+          ]},
+        {"id": "preferencias-client", "type": "serviceGateway", "name": "PreferencesClient", "props": {"port": "UserPreferences"},
+          "dependencies": [
+            {"target": "api-preferencias", "type": "config", "label": "REST"}
+          ]},
+        {"id": "notificaciones-client", "type": "serviceGateway", "name": "NotificationsClient", "props": {"port": "Notifications"},
+          "dependencies": [
+            {"target": "api-notificaciones", "type": "config", "label": "REST"}
+          ]},
+        {"id": "usuario-client", "type": "serviceGateway", "name": "UserDataClient", "props": {"port": "UserProfile"},
+          "dependencies": [
+            {"target": "datos-usuario/consultar-perfil", "type": "call", "label": "REST"}
+          ]}
+      ]}
+  ]
+}

@@ -1,7 +1,7 @@
-import { edgeId, includedTypes, INLINE_SEP, matchesRelationPattern, UniqueIds } from './model';
+import { DETAIL_PREFIX, edgeId, flattenCatalogNodes, includedTypes, INLINE_SEP, INNER_SEP, matchesRelationPattern, UniqueIds } from './model';
 import type {
+  CatalogEntry,
   CatalogModel,
-  CatalogNode,
   CatalogRelation,
   DiagramGroup,
   IncludeRule,
@@ -40,6 +40,8 @@ export type ViewNode = {
   origin: NodeOrigin;
   /** Subdiagrama que abre al pulsarlo (ruta relativa al diagrama actual, p. ej. `::@0:mfe-login`) */
   subdiagram?: string;
+  /** Tiene nodos internos: su ficha ofrece «Ver detalle», que abre esta ruta (`::#pagos`) */
+  detail?: string;
 };
 
 export type ViewEdge = DiagramEdge & {
@@ -49,6 +51,11 @@ export type ViewEdge = DiagramEdge & {
   id: string;
   /** Relación del catálogo de la que procede, si no está en el diagrama */
   relationId?: string;
+  /**
+   * La relación es de un nodo interno (o llega al nodo entero en su detalle) y se pinta desde/hacia
+   * el nodo que lo representa aquí. Si se repite con otra entre los mismos nodos, se queda la otra.
+   */
+  lifted?: boolean;
 };
 
 export type ViewModel = {
@@ -93,18 +100,51 @@ export const importedId = (catalogId: string) => `cat:${catalogId}`;
 
 /** Índice del catálogo para búsquedas rápidas */
 export class CatalogIndex {
-  readonly nodes: Map<string, CatalogNode>;
+  /** Todos los nodos, internos incluidos, por id completo (`pagos/cobrar`) */
+  readonly nodes: Map<string, CatalogEntry>;
+  /** Nodos internos de cada nodo */
+  readonly children = new Map<string, CatalogEntry[]>();
   readonly outgoing = new Map<string, CatalogRelation[]>();
   readonly incoming = new Map<string, CatalogRelation[]>();
 
   constructor(readonly model: CatalogModel) {
-    this.nodes = new Map(model.nodes.map((n) => [n.id, n]));
+    const all = flattenCatalogNodes(model.nodes);
+    this.nodes = new Map(all.map((n) => [n.id, n]));
+    for (const n of all) if (n.parent) (this.children.get(n.parent) ?? this.children.set(n.parent, []).get(n.parent)!).push(n);
     for (const r of model.relations) {
       (this.outgoing.get(r.source) ?? this.outgoing.set(r.source, []).get(r.source)!).push(r);
       (this.incoming.get(r.target) ?? this.incoming.set(r.target, []).get(r.target)!).push(r);
     }
   }
+
+  parentOf(id: string): string | undefined {
+    return this.nodes.get(id)?.parent;
+  }
+
+  /** ¿`id` es `ancestor` o está dentro de él? */
+  contains(ancestor: string, id: string): boolean {
+    return id === ancestor || id.startsWith(ancestor + INNER_SEP);
+  }
+
+  hasInner(id: string): boolean {
+    return !!this.children.get(id)?.length;
+  }
+
+  /** Relaciones que salen de `id` o de sus nodos internos hacia fuera de él */
+  outgoingDeep(id: string): CatalogRelation[] {
+    if (!this.hasInner(id)) return this.outgoing.get(id) ?? [];
+    return this.model.relations.filter((r) => this.contains(id, r.source) && !this.contains(id, r.target));
+  }
+
+  /** Relaciones que llegan a `id` o a sus nodos internos desde fuera de él */
+  incomingDeep(id: string): CatalogRelation[] {
+    if (!this.hasInner(id)) return this.incoming.get(id) ?? [];
+    return this.model.relations.filter((r) => this.contains(id, r.target) && !this.contains(id, r.source));
+  }
 }
+
+/** Ruta (relativa al diagrama actual) del detalle interno de un nodo del catálogo */
+export const detailPath = (catalogId: string) => `${INLINE_SEP}${DETAIL_PREFIX}${catalogId}`;
 
 /** ¿El diagrama usa el catálogo? (para cargarlo sólo si hace falta) */
 export function usesCatalog(model: DiagramModel): boolean {
@@ -134,9 +174,27 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
   if (catalog) {
     const included = new Set<string>();
     const imported: ViewNode[] = [];
+    /** Nodo cuyo detalle interno muestra el diagrama: sus internos se ven, él no */
+    const scope = model.include?.find((r) => r.detail)?.detail;
+
+    /**
+     * Nodo del catálogo que representa a `catalogId` en esta vista: él mismo o el contenedor más
+     * cercano que ya esté pintado; si no, el que queda al nivel de la vista (en una vista normal,
+     * el de primer nivel; en el detalle de X, el interno de X que lo contiene, o el de fuera de X).
+     * undefined: es X o uno de sus contenedores (no se pinta).
+     */
+    const levelOf = (catalogId: string): string | undefined => {
+      for (let a: string | undefined = catalogId; a; a = catalog.parentOf(a)) if (byCatalogId.has(a)) return a;
+      let a = catalogId;
+      for (let p = catalog.parentOf(a); p && !(scope && catalog.contains(p, scope)); p = catalog.parentOf(a)) a = p;
+      return scope && catalog.contains(a, scope) ? undefined : a;
+    };
 
     /** Nodo que hace de extremo `catalogId`, importándolo si la regla lo pide */
     const endpoint = (catalogId: string, doImport: boolean): ViewNode | undefined => {
+      const at = levelOf(catalogId);
+      if (!at) return undefined;
+      catalogId = at;
       const existing = byCatalogId.get(catalogId);
       if (existing || !doImport) return existing;
       const c = catalog.nodes.get(catalogId);
@@ -157,23 +215,39 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
       return v;
     };
 
-    const addRelation = (rel: CatalogRelation, rule: RelationRule) => {
-      if (included.has(rel.id)) return;
+    const catalogIdOf = (v: ViewNode) => (v.origin.kind === 'ref' ? v.origin.catalogId : undefined);
+    /**
+     * Añade una relación del catálogo. Si un extremo es interno de otro nodo, se pinta desde/hacia
+     * el que lo representa en esta vista (`lifted`): así un contenedor tiene, sin declararlas, las
+     * dependencias y las entrantes de sus internos.
+     */
+    const addRelation = (rel: CatalogRelation, rule: RelationRule): ViewNode[] => {
+      if (included.has(rel.id)) return [];
       const src = endpoint(rel.source, !!rule.import);
-      const dst = endpoint(rel.target, !!rule.import);
-      if (!src || !dst) return;
+      const dst = src && endpoint(rel.target, !!rule.import);
+      if (!src || !dst) return [];
       included.add(rel.id);
+      pushRelation(rel, src, dst, catalogIdOf(src) !== rel.source || catalogIdOf(dst) !== rel.target);
+      return [src, dst];
+    };
+
+    const pushRelation = (rel: CatalogRelation, src: ViewNode, dst: ViewNode, lifted: boolean) => {
+      // Entre dos internos del mismo nodo, vistos desde fuera: no se pinta
+      if (src === dst) return;
+      const lift = lifted ? { lifted: true } : {};
       // Por un intermedio: dos tramos (origen → intermedio → destino), nunca la flecha directa
       if (rel.through) {
         if (!catalog.nodes.has(rel.through)) {
           warnings.push(`Relación ${rel.id}: el intermedio «${rel.through}» no existe en el catálogo`);
           return;
         }
-        const via = endpoint(rel.through, true)!;
+        const via = endpoint(rel.through, true);
+        if (!via) return;
         if (via.origin.kind === 'ref' && via.origin.imported) via.origin = { ...via.origin, imported: false };
         const leg = (from: ViewNode, to: ViewNode, first: boolean): ViewEdge => ({
           id: ids.next(from.id, to.id),
           relationId: rel.id,
+          ...lift,
           via: via.id,
           source: from.id,
           target: to.id,
@@ -185,8 +259,8 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
           technology: first ? rel.technology : undefined,
           props: rel.props,
         });
-        if (!drawn.has(edgeId(src.id, via.id))) edges.push(leg(src, via, true));
-        if (!drawn.has(edgeId(via.id, dst.id))) edges.push(leg(via, dst, false));
+        if (src !== via && !drawn.has(edgeId(src.id, via.id))) edges.push(leg(src, via, true));
+        if (via !== dst && !drawn.has(edgeId(via.id, dst.id))) edges.push(leg(via, dst, false));
         return;
       }
       // Si el diagrama ya dibuja una arista entre esos dos nodos, prevalece la del diagrama
@@ -194,6 +268,7 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
       edges.push({
         id: ids.next(src.id, dst.id),
         relationId: rel.id,
+        ...lift,
         source: src.id,
         target: dst.id,
         kind: rel.kind,
@@ -213,12 +288,13 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
       const outRules = [...preset.outgoing, ...(n.outgoing ?? [])];
       const inRules = [...preset.incoming, ...(n.incoming ?? [])];
       const id = v.origin.catalogId;
-      for (const rel of catalog.outgoing.get(id) ?? []) {
+      // Con nodos internos, también las de sus internos (pintadas desde/hacia él)
+      for (const rel of catalog.outgoingDeep(id)) {
         // Con varias reglas aplicables gana la que importa
         const rule = pick(outRules, rel);
         if (rule) addRelation(rel, rule);
       }
-      for (const rel of catalog.incoming.get(id) ?? []) {
+      for (const rel of catalog.incomingDeep(id)) {
         const rule = pick(inRules, rel);
         if (rule) addRelation(rel, rule);
       }
@@ -239,6 +315,20 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
         v.subdiagram = `${INLINE_SEP}@${index}:${v.origin.catalogId}`;
       }
     };
+    /**
+     * Detalle interno de `id`: sus nodos internos y solo las relaciones en las que participa alguno
+     * de ellos (entre sí, hacia fuera o desde fuera; las de fuera se pintan desde el nodo de fuera
+     * o su contenedor). Las relaciones del propio `id` no entran: no dicen a qué interno van.
+     */
+    const addDetail = (id: string) => {
+      const inner = catalog.children.get(id) ?? [];
+      if (!catalog.nodes.has(id)) return void warnings.push(`detail: «${id}» no existe en el catálogo`);
+      if (!inner.length) return void warnings.push(`detail: «${id}» no tiene nodos internos ("nodes")`);
+      for (const c of inner) own(endpoint(c.id, true));
+      const inside = (cid: string) => cid !== id && catalog.contains(id, cid);
+      for (const rel of catalog.model.relations) if (inside(rel.source) || inside(rel.target)) addRelation(rel, { import: true });
+    };
+
     for (const { rule, index } of rules) {
       if (rule.type) {
         for (const c of catalog.model.nodes) if (c.type === rule.type) withTemplate(own(endpoint(c.id, true)), rule, index);
@@ -249,20 +339,21 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
           continue;
         }
         withTemplate(own(endpoint(rule.ref, true)), rule, index);
-        for (const rel of catalog.outgoing.get(rule.ref) ?? []) {
-          const target = catalog.nodes.get(rel.target);
-          if (!target || !matchesRelationPattern(rel.uses ? rule.uses : rule.dependencies, rel.type, target.type)) continue;
-          addRelation(rel, { import: true });
-          own(byCatalogId.get(rel.target));
+        // El tipo que cuenta es el del nodo que se pinta (el contenedor, si el extremo es interno)
+        const shownType = (cid: string) => catalog.nodes.get(levelOf(cid) ?? cid)?.type;
+        for (const rel of catalog.outgoingDeep(rule.ref)) {
+          const type = shownType(rel.target);
+          if (!type || !matchesRelationPattern(rel.uses ? rule.uses : rule.dependencies, rel.type, type)) continue;
+          own(addRelation(rel, { import: true }).at(-1) ?? endpoint(rel.target, false));
         }
         // Entrantes: quién depende de este nodo o lo usa
-        for (const rel of catalog.incoming.get(rule.ref) ?? []) {
-          const source = catalog.nodes.get(rel.source);
-          if (!source || !matchesRelationPattern(rule.incoming, rel.type, source.type)) continue;
-          addRelation(rel, { import: true });
-          own(byCatalogId.get(rel.source));
+        for (const rel of catalog.incomingDeep(rule.ref)) {
+          const type = shownType(rel.source);
+          if (!type || !matchesRelationPattern(rule.incoming, rel.type, type)) continue;
+          own(addRelation(rel, { import: true })[0] ?? endpoint(rel.source, false));
         }
       }
+      if (rule.detail) addDetail(rule.detail);
     }
     // Vistas por tipo: también todas las relaciones del catálogo entre los nodos pintados
     if (rules.some(({ rule }) => rule.type)) for (const rel of catalog.model.relations) addRelation(rel, { import: false });
@@ -271,6 +362,20 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
 
   if ((includeTypes.length || model.include?.length) && !catalog) warnings.push('"include" necesita el catálogo de la carpeta para saber qué nodos pintar');
 
+  // Relaciones elevadas (de nodos internos) que repiten otra entre los mismos nodos: se queda la
+  // otra; entre elevadas iguales (mismo par, tipo y bloque), sólo la primera
+  {
+    const pair = (e: ViewEdge) => `${edgeId(e.source, e.target)}|${e.uses ? 'u' : 'd'}`;
+    const direct = new Set(edges.filter((e) => !e.lifted).map(pair));
+    const seen = new Set<string>();
+    for (let i = 0; i < edges.length; i++) {
+      const e = edges[i];
+      if (!e.lifted) continue;
+      const key = `${pair(e)}|${e.type ?? ''}`;
+      if (direct.has(pair(e)) || seen.has(key)) edges.splice(i--, 1);
+      else seen.add(key);
+    }
+  }
   // Tramos por un intermedio que repiten otra arista entre los mismos nodos: se queda la otra
   // (p. ej. la ruta gateway → bff ya existe); entre tramos iguales, sólo el primero
   {
@@ -302,8 +407,12 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
   }
 
   // Sin título: el nombre del nodo de la primera regla `ref` (p. ej. una plantilla instanciada)
-  const refRule = model.include?.find((r) => r.ref);
-  const title = model.title ?? (refRule?.ref ? (catalog?.nodes.get(refRule.ref)?.name ?? refRule.ref) : undefined);
+  const refRule = model.include?.find((r) => r.ref || r.detail);
+  const refId = refRule?.ref ?? refRule?.detail;
+  const title = model.title ?? (refId ? (catalog?.nodes.get(refId)?.name ?? refId) : undefined);
+
+  // Nodos del catálogo con nodos internos: su ficha ofrece ver el detalle
+  if (catalog) for (const v of keep) if (v.origin.kind === 'ref' && catalog.hasInner(v.origin.catalogId)) v.detail = detailPath(v.origin.catalogId);
 
   return {
     title,

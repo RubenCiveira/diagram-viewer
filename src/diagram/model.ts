@@ -121,8 +121,21 @@ export type IncludeRule = {
   uses?: string;
   /** Relaciones que llegan al nodo `ref` (desde `dependencies` o `uses` de otros) */
   incoming?: string;
+  /**
+   * Detalle interno de un nodo del catálogo: sus nodos internos (`nodes`), las relaciones de
+   * esos internos y las que les llegan de fuera (o llegan al nodo entero).
+   */
+  detail?: string;
   diagram?: DiagramModel;
 };
+
+/** Segmento de ruta del detalle interno de un nodo del catálogo: `diagrama.json::#pagos` */
+export const DETAIL_PREFIX = '#';
+
+/** Diagrama con el detalle interno de un nodo del catálogo (se genera, no se escribe) */
+export function detailModel(catalogId: string): DiagramModel {
+  return { version: '1.0', include: [{ detail: catalogId }], nodes: [], edges: [] };
+}
 
 /** Valor que se sustituye por el nodo concreto al instanciar una plantilla de subdiagrama */
 export const SELF_REF = '$self';
@@ -255,6 +268,10 @@ export const ZDiagramModel = z
               .string()
               .optional()
               .describe('Con ref: relaciones que le llegan que encajen con "tipoDeRelación/tipoDeNodo".'),
+            detail: z
+              .string()
+              .optional()
+              .describe('Detalle interno de este nodo del catálogo: sus nodos internos, sus relaciones y las que les llegan.'),
             // Plantilla de subdiagrama para cada nodo incluido (recursivo)
             get diagram() {
               return ZDiagramModel.optional().describe(
@@ -262,7 +279,7 @@ export const ZDiagramModel = z
               );
             },
           })
-          .describe('Selector de nodos del catálogo: por type o por ref.'),
+          .describe('Selector de nodos del catálogo: por type, por ref o el detalle interno de un nodo (detail).'),
       )
       .optional()
       .describe('Selectores de nodos del catálogo que pintar.'),
@@ -335,15 +352,56 @@ export type CatalogNode = {
   dependencies?: CatalogDependency[];
   /** Usos: acoplamiento más fuerte que una dependencia. Se dibujan hacia abajo y destacados. */
   uses?: CatalogDependency[];
+  /**
+   * Nodos internos (casos de uso, gateways…). Su id completo es `<padre>/<id>`. Se ven en el
+   * detalle del nodo; fuera de él, sus relaciones se pintan desde/hacia el padre.
+   */
+  nodes?: CatalogNode[];
 };
+
+/** Separador de los ids completos de los nodos internos: `pagos/cobrar` es `cobrar` dentro de `pagos` */
+export const INNER_SEP = '/';
+
+/** Nodo del catálogo con su id completo (`pagos/cobrar`) y el de su contenedor */
+export type CatalogEntry = CatalogNode & { parent?: string };
+
+/** Todos los nodos del catálogo, internos incluidos (en profundidad), con su id completo */
+export function flattenCatalogNodes(nodes: CatalogNode[], parent?: string, out: CatalogEntry[] = []): CatalogEntry[] {
+  for (const n of nodes) {
+    const id = parent ? parent + INNER_SEP + n.id : n.id;
+    out.push({ ...n, id, parent });
+    if (n.nodes?.length) flattenCatalogNodes(n.nodes, id, out);
+  }
+  return out;
+}
+
+/**
+ * Id completo al que apunta `ref` escrito en un nodo interno de `parent`: primero un hermano
+ * (`<parent>/<ref>`), luego subiendo de contenedor en contenedor y, al final, tal cual (un id
+ * de primer nivel o uno completo como `pagos/cobrar`).
+ */
+export function resolveCatalogRef(ref: string, parent: string | undefined, exists: (id: string) => boolean): string {
+  for (let scope = parent; scope; ) {
+    const id = scope + INNER_SEP + ref;
+    if (exists(id)) return id;
+    const i = scope.lastIndexOf(INNER_SEP);
+    scope = i < 0 ? undefined : scope.slice(0, i);
+  }
+  return ref;
+}
 
 /** Dependencia ya asociada a su origen, con su id calculado */
 export type CatalogRelation = CatalogDependency & { id: string; source: string; /** Viene de `uses` */ uses?: boolean };
 
 export type CatalogModel = {
   version: string;
+  /**
+   * Otros ficheros de catálogo cuyos nodos se suman a este (rutas relativas a este fichero,
+   * `/` = raíz). Ya resuelto, el catálogo combinado no los lleva.
+   */
+  include?: string[];
   nodes: CatalogNode[];
-  /** Todas las dependencias de todos los nodos (derivado de `nodes[].dependencies`) */
+  /** Todas las dependencias de todos los nodos, internos incluidos, con ids completos (derivado de `dependencies` y `uses`) */
   relations: CatalogRelation[];
 };
 
@@ -365,32 +423,48 @@ const ZDependency = z
   })
   .describe('Relación saliente de un nodo del catálogo.');
 
+const ZCatalogNode = z
+  .object({
+    id: z
+      .string()
+      .describe('Identificador único en el catálogo (kebab-case con prefijo: mfe-, bff-, api-…). En un nodo interno, único entre sus hermanos. Sin "/".'),
+    type: z.string().describe('Tipo del nodo. Texto libre: los tipos de la paleta tienen icono y ficha propios; cualquier otro se pinta como nodo genérico.'),
+    name: z.string().optional().describe('Nombre visible.'),
+    description: ZMarkdown('Descripción para la ficha.').optional(),
+    props: ZProps.optional(),
+    dependencies: z
+      .array(ZDependency)
+      .optional()
+      .describe('Relaciones salientes normales: flecha hacia la derecha.'),
+    uses: z
+      .array(ZDependency)
+      .optional()
+      .describe('Relaciones de acoplamiento fuerte: flecha hacia abajo, destacada.'),
+    // Recursivo: nodos internos (casos de uso, gateways…)
+    get nodes(): z.ZodOptional<z.ZodArray<typeof ZCatalogNode>> {
+      return z
+        .array(ZCatalogNode)
+        .optional()
+        .describe('Nodos internos (casos de uso, gateways…), con el mismo formato. Se ven en el detalle del nodo. Su id completo es "<padre>/<id>".');
+    },
+  })
+  .describe('Pieza del sistema.');
+
 export const ZCatalogModel = z
   .object({
     version: z.string().default('1.0').describe('Versión del formato: "1.0".'),
+    include: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Otros ficheros de catálogo, con este mismo formato, cuyos nodos se suman a este. Rutas relativas a este fichero ("/" = raíz). Un fichero incluido puede incluir otros.',
+      ),
     nodes: z
-      .array(
-        z
-          .object({
-            id: z.string().describe('Identificador único en el catálogo (kebab-case con prefijo: mfe-, bff-, api-…).'),
-            type: z.string().describe('Tipo del nodo. Texto libre: los tipos de la paleta tienen icono y ficha propios; cualquier otro se pinta como nodo genérico.'),
-            name: z.string().optional().describe('Nombre visible.'),
-            description: ZMarkdown('Descripción para la ficha.').optional(),
-            props: ZProps.optional(),
-            dependencies: z
-              .array(ZDependency)
-              .optional()
-              .describe('Relaciones salientes normales: flecha hacia la derecha.'),
-            uses: z
-              .array(ZDependency)
-              .optional()
-              .describe('Relaciones de acoplamiento fuerte: flecha hacia abajo, destacada.'),
-          })
-          .describe('Pieza del sistema.'),
-      )
+      .array(ZCatalogNode)
+      .default([])
       .describe('Nodos del sistema, cada uno con sus relaciones salientes.'),
   })
-  .describe('Catálogo de una carpeta de diagramas: nodos y relaciones reutilizables.');
+  .describe('Catálogo de una carpeta de diagramas (o fragmento incluido desde él): nodos y relaciones reutilizables.');
 
 /** Índice de diagramas (`index.json` en la raíz de la carpeta de diagramas) */
 export const ZManifest = z
@@ -416,13 +490,27 @@ function normDep(d: CatalogDependency & { throught?: string }): CatalogDependenc
 export function tryParseCatalog(input: unknown): { ok: true; data: CatalogModel } | { ok: false; error: string } {
   const parsed = ZCatalogModel.safeParse(input);
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
-  const nodes = parsed.data.nodes as CatalogNode[];
+  const { version, include } = parsed.data;
+  return { ok: true, data: { ...buildCatalog(version, parsed.data.nodes as CatalogNode[]), ...(include?.length ? { include } : {}) } };
+}
+
+/** Catálogo a partir de sus nodos: calcula las relaciones (sirve también para combinar ficheros incluidos) */
+export function buildCatalog(version: string, nodes: CatalogNode[]): CatalogModel {
+  const all = flattenCatalogNodes(nodes);
+  const known = new Set(all.map((n) => n.id));
   const ids = new UniqueIds();
-  const relations: CatalogRelation[] = nodes.flatMap((n) => [
-    ...(n.dependencies ?? []).map((d) => ({ ...normDep(d), source: n.id, id: ids.next(n.id, d.target) })),
-    ...(n.uses ?? []).map((d) => ({ ...normDep(d), source: n.id, id: ids.next(n.id, d.target), uses: true })),
+  // Los target/through de un nodo interno se buscan primero entre sus hermanos
+  const relation = (n: CatalogEntry, d: CatalogDependency, uses: boolean): CatalogRelation => {
+    const dep = normDep(d);
+    const ref = (r: string) => resolveCatalogRef(r, n.parent, (id) => known.has(id));
+    const target = ref(dep.target);
+    return { ...dep, target, through: dep.through && ref(dep.through), source: n.id, id: ids.next(n.id, target), ...(uses ? { uses } : {}) };
+  };
+  const relations: CatalogRelation[] = all.flatMap((n) => [
+    ...(n.dependencies ?? []).map((d) => relation(n, d, false)),
+    ...(n.uses ?? []).map((d) => relation(n, d, true)),
   ]);
-  return { ok: true, data: { version: parsed.data.version, nodes, relations } };
+  return { version, nodes, relations };
 }
 
 /* ============================================================================

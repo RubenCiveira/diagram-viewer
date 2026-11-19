@@ -93,10 +93,12 @@ example/
     ├── e-commerce/
     │   ├── index.json      diagrama raíz de «e-commerce»
     │   ├── catalog.json    catálogo de «e-commerce»
+    │   ├── catalog/…       partes del catálogo, incluidas desde catalog.json
     │   └── pedidos/…       subdiagramas (usan el catálogo de e-commerce)
     └── portal/
         ├── index.json      con Frontend y Backend definidos dentro
-        └── catalog.json
+        ├── catalog.json    gateway, APIs, bases de datos y piezas externas
+        └── catalog/…       un fichero por microfrontend y microservicio propio, con sus pantallas o casos de uso y gateways
 ```
 
 ### Índice (`index.json`)
@@ -134,6 +136,23 @@ Cada carpeta de diagrama tiene el suyo, junto a su diagrama raíz. Describe una 
 - `type` de un nodo: el tipo de la paleta (`microservice`, `database`…).
 - `type` de una dependencia: su categoría (`config`, `call`, `contains`…). Las referencias la usan para filtrar.
 - `kind: "parentChild"` en una dependencia la dibuja de padre a hijo, con el hijo junto al padre.
+
+Un catálogo grande puede repartirse en varios ficheros con `include` (rutas relativas a `catalog.json`; mismo formato, y pueden incluir otros a su vez). Los nodos de todos se suman en un único catálogo, así que las relaciones pueden cruzar ficheros:
+
+```json
+{ "version": "1.0", "include": ["catalog/pagos.json", "catalog/pedidos.json"], "nodes": [ … ] }
+```
+
+#### Nodos internos
+
+Un nodo puede llevar en `nodes` sus piezas internas (p. ej. los casos de uso y gateways de un microservicio), con el mismo formato y relacionadas entre sí. Su id completo es `<padre>/<id>` (`pagos/cobrar`); desde un interno, un `target` busca primero entre sus hermanos. Fuera de su contenedor no se pintan: sus relaciones se dibujan desde/hacia él, como si las declarase, así que el contenedor hereda las dependencias y entrantes de sus internos sin declararlas (caso de uso → gateway → base de datos ⇒ microservicio → base de datos). Al pulsar el contenedor, su ficha ofrece **Ver detalle**, que abre un diagrama solo con las relaciones de sus internos: entre ellos, hacia fuera y desde fuera. En la URL va como `…::#pagos`. Se puede pintar también con el selector `{ "detail": "pagos" }`. Ver la guía, §3.5.
+
+```json
+{ "id": "pagos", "type": "microservice", "nodes": [
+  { "id": "cobrar", "type": "useCase", "dependencies": [ { "target": "stripe-gw", "type": "call" } ] },
+  { "id": "stripe-gw", "type": "serviceGateway", "dependencies": [ { "target": "stripe", "type": "config" } ] }
+] }
+```
 
 #### Dependencias y usos
 
@@ -243,6 +262,7 @@ Un nodo `diagram` puede llevar la definición del subdiagrama en `diagram` en ve
 | Selector | Qué incluye |
 |---|---|
 | `{ "type": "microFront" }` | Todos los nodos del catálogo de ese tipo |
+| `{ "detail": "pagos" }` | El detalle interno de ese nodo: sus nodos internos, sus relaciones y las que les llegan |
 | `{ "ref": "mfe-login", "dependencies": "*/*", "uses": "*/*", "incoming": "*/*" }` | Ese nodo y las relaciones que encajen con cada patrón `"tipoDeRelación/tipoDeNodo"` (`*` = cualquiera; el tipo de nodo es el del otro extremo), junto con los nodos del otro extremo:<br>· `dependencies` / `uses`: sus relaciones salientes de cada bloque.<br>· `incoming`: las que le llegan desde otros nodos (de sus `dependencies` o `uses`).<br>Ejemplos de patrón: `"call/microservice"`, `"*/api"`, `"config"` (solo el tipo de relación). |
 
 Cualquier selector puede llevar `diagram`, una **plantilla de subdiagrama**: cada nodo que incluye ese selector abre al pulsarlo un subdiagrama generado a partir de la plantilla, cambiando `"$self"` por ese nodo. Estos nodos llevan un distintivo de capas, y dentro del subdiagrama, al pulsarlos, se ve su ficha. En el ejemplo, cada microfrontend de Frontend abre «él con todas sus relaciones, entrantes y salientes, y lo que hay al otro lado»:

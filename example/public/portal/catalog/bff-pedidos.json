@@ -1,0 +1,59 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "bff-pedidos", "type": "microservice", "name": "bff-pedidos", "description": "Backend for frontend del microfrontend **Pedidos**.", "props": {"tech": "spring", "baseUrl": "https://bff-pedidos.portal.internal"},
+      "nodes": [
+        {"id": "listar-pedidos", "type": "useCase", "name": "Listar pedidos", "props": {"trigger": "REST", "endpoint": "GET /orders"},
+          "dependencies": [
+            {"target": "pedidos-client", "type": "call"},
+            {"target": "pedidos-repo", "type": "call"}
+          ]},
+        {"id": "ver-pedido", "type": "useCase", "name": "Ver pedido", "props": {"trigger": "REST", "endpoint": "GET /orders/{id}"},
+          "dependencies": [
+            {"target": "pedidos-client", "type": "call"},
+            {"target": "envios-client", "type": "call"},
+            {"target": "pagos-client", "type": "call"}
+          ]},
+        {"id": "solicitar-devolucion", "type": "useCase", "name": "Solicitar devolución", "props": {"trigger": "REST", "endpoint": "POST /orders/{id}/returns", "transactional": true},
+          "dependencies": [
+            {"target": "pedidos-client", "type": "call"},
+            {"target": "tickets-client", "type": "call"},
+            {"target": "notificaciones-client", "type": "call"},
+            {"target": "clientes-client", "type": "call"},
+            {"target": "usuario-client", "type": "call"}
+          ]},
+        {"id": "pedidos-client", "type": "serviceGateway", "name": "OrdersClient", "props": {"port": "Orders"},
+          "dependencies": [
+            {"target": "api-pedidos", "type": "config", "label": "REST"}
+          ]},
+        {"id": "envios-client", "type": "serviceGateway", "name": "ShipmentsClient", "props": {"port": "Shipments"},
+          "dependencies": [
+            {"target": "api-envios", "type": "config", "label": "REST"}
+          ]},
+        {"id": "pagos-client", "type": "serviceGateway", "name": "PaymentsClient", "props": {"port": "Payments"},
+          "dependencies": [
+            {"target": "api-pagos", "type": "config", "label": "REST"}
+          ]},
+        {"id": "clientes-client", "type": "serviceGateway", "name": "CustomersClient", "props": {"port": "Customers"},
+          "dependencies": [
+            {"target": "api-clientes", "type": "config", "label": "REST"}
+          ]},
+        {"id": "notificaciones-client", "type": "serviceGateway", "name": "NotificationsClient", "props": {"port": "Notifications"},
+          "dependencies": [
+            {"target": "api-notificaciones", "type": "config", "label": "REST"}
+          ]},
+        {"id": "tickets-client", "type": "serviceGateway", "name": "TicketsClient", "props": {"port": "SupportTickets"},
+          "dependencies": [
+            {"target": "api-tickets", "type": "config", "label": "REST"}
+          ]},
+        {"id": "pedidos-repo", "type": "serviceGateway", "name": "OrderHistoryRepository", "props": {"port": "OrderHistory", "client": "Spring Data JPA"},
+          "dependencies": [
+            {"target": "postgres", "type": "config", "technology": "JDBC"}
+          ]},
+        {"id": "usuario-client", "type": "serviceGateway", "name": "UserDataClient", "props": {"port": "UserProfile"},
+          "dependencies": [
+            {"target": "datos-usuario/consultar-perfil", "type": "call", "label": "REST"}
+          ]}
+      ]}
+  ]
+}

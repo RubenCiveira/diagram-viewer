@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "mfe-catalogo", "type": "microFront", "name": "Catálogo", "props": {"route": "/catalogo", "remoteEntryUrl": "https://cdn.portal.example.com/catalogo/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
+      "dependencies": [
+        {"target": "cfg-catalogo", "type": "config"}
+      ],
+      "nodes": [
+        {"id": "listado", "type": "screen", "name": "Listado de productos", "props": {"route": "/catalogo"},
+          "dependencies": [
+            {"target": "bff-catalogo/buscar-productos", "type": "call", "label": "HTTPS", "through": "gateway"},
+            {"target": "ext-cmp-buscador", "type": "embeds"}
+          ]},
+        {"id": "ficha-producto", "type": "screen", "name": "Ficha de producto", "props": {"route": "/catalogo/:id"},
+          "dependencies": [
+            {"target": "bff-catalogo/ver-producto", "type": "call", "label": "HTTPS", "through": "gateway"},
+            {"target": "bff-catalogo/recomendar", "type": "call", "label": "HTTPS", "through": "gateway"}
+          ]}
+      ]},
+    {"id": "cfg-catalogo", "type": "remoteConfig", "name": "config catalogo", "props": {"source": "https://config.portal.example.com/catalogo.json", "format": "json", "refresh": "5 min", "flags": ["filtros-avanzados"]}}
+  ]
+}

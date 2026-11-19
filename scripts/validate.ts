@@ -6,7 +6,7 @@
  * - Errores: JSON inválido o ficheros que no cumplen su JSON Schema (docs/schemas/). El fichero
  *   está mal formado. Terminan con código 1.
  * - Avisos funcionales: referencias entre ficheros que no se resuelven (ids del catálogo,
- *   intermedios, subdiagramas, aristas, ids duplicados). El visor los tolera: pinta el nodo
+ *   intermedios, subdiagramas, aristas, ids duplicados, include del catálogo). El visor los tolera: pinta el nodo
  *   marcado y muestra un aviso. Sólo hacen fallar el comando con --strict.
  *
  * Pensado para que quien genera los ficheros (una persona o un agente de IA) compruebe su
@@ -61,8 +61,41 @@ for (const f of files) {
   }
 }
 
+const dirOf = (p: string) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/') + 1) : '');
+const resolveRel = (from: string, rel: string) => path.posix.normalize(rel.startsWith('/') ? rel.slice(1) : dirOf(from) + rel);
+
+/**
+ * Ficheros de un catálogo: el propio catalog.json y los que incluye (en profundidad, como el
+ * visor). Los avisos de include (no existe, ciclo) se dan una sola vez por fichero.
+ */
+const catalogFiles = new Set<string>();
+const includeChecked = new Set<string>();
+function collectCatalog(file: string, chain: string[] = [file]): string[] {
+  catalogFiles.add(file);
+  const out = [file];
+  for (const rel of json.get(file)?.include ?? []) {
+    if (typeof rel !== 'string') continue;
+    const target = resolveRel(file, rel);
+    const report = !includeChecked.has(file);
+    if (target.startsWith('../')) {
+      if (report) warn(file, `include «${rel}» sale de la carpeta de diagramas`);
+    } else if (chain.includes(target)) {
+      if (report) warn(file, `include «${rel}» forma un ciclo (${[...chain, target].join(' → ')})`);
+    } else if (!json.has(target)) {
+      if (report) warn(file, `include «${rel}»: no existe ${target}`);
+    } else if (!out.includes(target)) {
+      for (const f of collectCatalog(target, [...chain, target])) if (!out.includes(f)) out.push(f);
+    }
+  }
+  includeChecked.add(file);
+  return out;
+}
+/** Catálogo de cada carpeta de diagrama → sus ficheros, en el orden en que el visor los suma */
+const catalogsByFolder = new Map<string, string[]>();
+for (const f of json.keys()) if (path.basename(f) === 'catalog.json') catalogsByFolder.set(dirOf(f), collectCatalog(f));
+
 // 1. Cada fichero contra su schema
-const kindOf = (f: string) => (f === 'index.json' ? 'index' : path.basename(f) === 'catalog.json' ? 'catalog' : 'diagram');
+const kindOf = (f: string) => (f === 'index.json' ? 'index' : catalogFiles.has(f) ? 'catalog' : 'diagram');
 for (const [f, data] of json) {
   const v = validators[kindOf(f)];
   if (!v(data)) for (const e of v.errors ?? []) err(f, fmt(e));
@@ -79,9 +112,6 @@ for (const d of index?.diagrams ?? []) {
   else roots.push(file);
 }
 
-const dirOf = (p: string) => (p.includes('/') ? p.slice(0, p.lastIndexOf('/') + 1) : '');
-const resolveRel = (from: string, rel: string) => path.posix.normalize(rel.startsWith('/') ? rel.slice(1) : dirOf(from) + rel);
-
 const checkDiagram = (file: string, d: any, catalogIds: Set<string> | null, where: string) => {
   const ids = new Set<string>();
   for (const n of d.nodes ?? []) {
@@ -97,26 +127,54 @@ const checkDiagram = (file: string, d: any, catalogIds: Set<string> | null, wher
   }
   for (const [i, r] of (d.include ?? []).entries()) {
     if (r.ref && r.ref !== '$self' && catalogIds && !catalogIds.has(r.ref)) warn(file, `${where}include[${i}]: «${r.ref}» no está en el catálogo`);
-    if ((r.ref || r.type) && !catalogIds) warn(file, `${where}include[${i}] necesita catalog.json en la carpeta`);
+    if (r.detail && r.detail !== '$self' && catalogIds && !catalogIds.has(r.detail)) warn(file, `${where}include[${i}]: «${r.detail}» no está en el catálogo`);
+    if ((r.ref || r.type || r.detail) && !catalogIds) warn(file, `${where}include[${i}] necesita catalog.json en la carpeta`);
     if (r.diagram) checkDiagram(file, r.diagram, catalogIds, `${where}include[${i}] › `);
   }
 };
 
 for (const root of roots) {
   const folder = dirOf(root);
-  const catalog = json.get(folder + 'catalog.json');
+  const parts = catalogsByFolder.get(folder);
   let catalogIds: Set<string> | null = null;
-  if (catalog) {
+  if (parts) {
     catalogIds = new Set();
-    for (const n of catalog.nodes ?? []) {
-      if (catalogIds.has(n.id)) warn(folder + 'catalog.json', `nodo «${n.id}» duplicado`);
+    // Nodos de todos los ficheros del catálogo: un target puede estar en otro fichero
+    const owner = new Map<string, string>();
+    const nodes = parts.flatMap((f) => (json.get(f)?.nodes ?? []).map((n: any) => ({ f, n })));
+    for (const { f, n } of nodes) {
+      if (catalogIds.has(n.id)) warn(f, `nodo «${n.id}» duplicado${owner.get(n.id) !== f ? ` (ya está en ${owner.get(n.id)})` : ''}`);
+      else owner.set(n.id, f);
       catalogIds.add(n.id);
     }
-    for (const n of catalog.nodes ?? []) {
+    // Nodos internos (`nodes` de un nodo): id completo <padre>/<id>, únicos entre hermanos
+    const all: { f: string; n: any; id: string; parent?: string }[] = [];
+    const flatten = (f: string, list: any[], parent?: string) => {
+      const siblings = new Set<string>();
+      for (const n of list ?? []) {
+        const id = parent ? `${parent}/${n.id}` : n.id;
+        if (parent) {
+          if (siblings.has(n.id)) warn(f, `nodo interno «${id}» duplicado`);
+          siblings.add(n.id);
+          catalogIds!.add(id);
+        }
+        all.push({ f, n, id, parent });
+        if (n.nodes) flatten(f, n.nodes, id);
+      }
+    };
+    for (const { f, n } of nodes) flatten(f, [n]);
+    // Como el visor: un target de un nodo interno se busca primero entre sus hermanos, luego subiendo
+    const lookup = (ref: string, parent?: string) => {
+      for (let scope = parent; scope; scope = scope.includes('/') ? scope.slice(0, scope.lastIndexOf('/')) : undefined) {
+        if (catalogIds!.has(`${scope}/${ref}`)) return true;
+      }
+      return catalogIds!.has(ref);
+    };
+    for (const { f, n, id, parent } of all) {
       for (const block of ['dependencies', 'uses'] as const) {
         for (const r of n[block] ?? []) {
-          if (!catalogIds.has(r.target)) warn(folder + 'catalog.json', `«${n.id}».${block}: «${r.target}» no existe`);
-          if (r.through && !catalogIds.has(r.through)) warn(folder + 'catalog.json', `«${n.id}».${block}: intermedio «${r.through}» no existe`);
+          if (!lookup(r.target, parent)) warn(f, `«${id}».${block}: «${r.target}» no existe`);
+          if (r.through && !lookup(r.through, parent)) warn(f, `«${id}».${block}: intermedio «${r.through}» no existe`);
         }
       }
     }

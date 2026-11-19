@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "bff-soporte", "type": "microservice", "name": "bff-soporte", "description": "Backend for frontend del microfrontend **Soporte**.", "props": {"tech": "php-slim", "baseUrl": "https://bff-soporte.portal.internal"},
+      "nodes": [
+        {"id": "buscar-faq", "type": "useCase", "name": "Buscar en la FAQ", "props": {"trigger": "REST", "endpoint": "GET /faq"},
+          "dependencies": [
+            {"target": "faq-client", "type": "call"}
+          ]},
+        {"id": "listar-tickets", "type": "useCase", "name": "Listar consultas", "props": {"trigger": "REST", "endpoint": "GET /tickets"},
+          "dependencies": [
+            {"target": "tickets-client", "type": "call"},
+            {"target": "tickets-repo", "type": "call"}
+          ]},
+        {"id": "abrir-ticket", "type": "useCase", "name": "Abrir consulta", "props": {"trigger": "REST", "endpoint": "POST /tickets"},
+          "dependencies": [
+            {"target": "tickets-client", "type": "call"},
+            {"target": "tickets-repo", "type": "call"}
+          ]},
+        {"id": "faq-client", "type": "serviceGateway", "name": "FaqClient", "props": {"port": "Faq"},
+          "dependencies": [
+            {"target": "api-faq", "type": "config", "label": "REST"}
+          ]},
+        {"id": "tickets-client", "type": "serviceGateway", "name": "TicketsClient", "props": {"port": "SupportTickets"},
+          "dependencies": [
+            {"target": "api-tickets", "type": "config", "label": "REST"}
+          ]},
+        {"id": "tickets-repo", "type": "serviceGateway", "name": "TicketDraftRepository", "props": {"port": "TicketDrafts", "client": "Slim + MongoDB"},
+          "dependencies": [
+            {"target": "mongo", "type": "config", "technology": "MongoDB driver"}
+          ]}
+      ]}
+  ]
+}

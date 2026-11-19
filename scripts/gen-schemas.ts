@@ -86,7 +86,7 @@ node.allOf = [
 ];
 const selector = find(diagram, 'Selector de nodos del catálogo');
 selector.properties.type = { ...selector.properties.type, examples: catalogTypes };
-selector.anyOf = [{ required: ['type'] }, { required: ['ref'] }];
+selector.anyOf = [{ required: ['type'] }, { required: ['ref'] }, { required: ['detail'] }];
 walk(diagram, (x) => {
   if (x.description === 'Tipos de nodo que entran en la caja (texto libre).') x.items = { type: 'string', examples: types };
 });
@@ -97,6 +97,8 @@ closeObjects(catalog);
 catalog.properties.$schema = { type: 'string', description: 'Ruta a este schema (opcional).' };
 const catNode = find(catalog, 'Pieza del sistema.');
 catNode.properties.type = { ...catNode.properties.type, examples: catalogTypes };
+// Los ids de los nodos internos se escriben <padre>/<id>: un id no puede llevar '/'
+catNode.properties.id = { ...catNode.properties.id, pattern: '^[^/]+$' };
 // La errata `throught` se acepta en el visor, pero no se debe generar
 walk(catalog, (x) => {
   if (x.properties?.throught) delete x.properties.throught;

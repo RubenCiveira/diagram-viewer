@@ -19,7 +19,10 @@ import { MicroFrontElement } from './nodes/micro-front';
 import { MicroserviceElement } from './nodes/microservice';
 import { OAuthProxyElement } from './nodes/oauth-proxy';
 import { RemoteConfigElement } from './nodes/remote-config';
+import { ScreenElement } from './nodes/screen';
+import { ServiceGatewayElement } from './nodes/service-gateway';
 import { ShellUiElement } from './nodes/shell-ui';
+import { UseCaseElement } from './nodes/use-case';
 import { ActorUser } from './nodes/user';
 
 export const ModularAppPalette: PaletteInterface = {
@@ -27,12 +30,15 @@ export const ModularAppPalette: PaletteInterface = {
     new ActorUser(),
     new ShellUiElement(),
     new MicroFrontElement(),
+    new ScreenElement(),
     new ExtMicroFrontElement(),
     new ExtMfeComponentElement(),
     new GatewayElement(),
     new GatewayProxyElement(),
     new OAuthProxyElement(),
     new MicroserviceElement(),
+    new UseCaseElement(),
+    new ServiceGatewayElement(),
     new DatabaseElement(),
     new ExternalServiceElement(),
     new ExternalSoapElement(),

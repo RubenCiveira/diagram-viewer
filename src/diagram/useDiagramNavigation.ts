@@ -1,8 +1,9 @@
 import React from 'react';
 import { readUrl, writeUrl, type Viewport } from '../app/urlState';
 import { FileNotFoundError, type Repository } from '../storage';
+import { loadCatalog } from '../storage/catalog';
 import { diagramFileOf } from '../storage/manifest';
-import { CATALOG_FILE, INLINE_SEP, instantiateTemplate, type DiagramModel } from './model';
+import { CATALOG_FILE, DETAIL_PREFIX, detailModel, INLINE_SEP, instantiateTemplate, type DiagramModel } from './model';
 import { baseName, resolvePath, stripExt } from './paths';
 import { CatalogIndex, resolveDiagram, usesCatalog, type ViewModel } from './resolve';
 
@@ -60,7 +61,8 @@ export function useDiagramNavigation(repo: Repository | null) {
 
   /**
    * Lee un diagrama. `fichero::a::b` es el subdiagrama `b` definido dentro del nodo `a` de ese
-   * fichero; `::@2:mfe-login` es la plantilla de la regla 2 de `include` instanciada para `mfe-login`.
+   * fichero; `::@2:mfe-login` es la plantilla de la regla 2 de `include` instanciada para `mfe-login`;
+   * `::#pagos` es el detalle interno del nodo `pagos` del catálogo (se genera a partir de él).
    */
   const readModel = React.useCallback(
     async (path: string): Promise<DiagramModel> => {
@@ -70,6 +72,12 @@ export function useDiagramNavigation(repo: Repository | null) {
       let model = await file.read();
       let title = model.title;
       for (const segment of inline) {
+        if (segment.startsWith(DETAIL_PREFIX)) {
+          model = detailModel(segment.slice(DETAIL_PREFIX.length));
+          // El título lo pone la resolución (nombre del nodo en el catálogo)
+          title = undefined;
+          continue;
+        }
         if (segment.startsWith('@')) {
           const sep = segment.indexOf(':');
           const index = Number(segment.slice(1, sep));
@@ -95,9 +103,10 @@ export function useDiagramNavigation(repo: Repository | null) {
   /**
    * Cada carpeta de diagrama tiene su propio catálogo, junto a su diagrama raíz
    * (public/portal/catalog.json). Los subdiagramas usan el de su raíz aunque
-   * estén en subcarpetas. Se lee una vez por carpeta (y de nuevo al recargar).
+   * estén en subcarpetas. El catálogo puede repartirse en varios ficheros con `include`.
+   * Se lee una vez por carpeta (y de nuevo al recargar).
    */
-  const catalogCache = React.useRef(new Map<string, Promise<{ index: CatalogIndex | null; error?: string }>>());
+  const catalogCache = React.useRef(new Map<string, Promise<{ index: CatalogIndex | null; error?: string; warnings?: string[] }>>());
   React.useEffect(() => {
     catalogCache.current.clear();
   }, [repo]);
@@ -107,9 +116,8 @@ export function useDiagramNavigation(repo: Repository | null) {
       if (!cached) {
         cached = (async () => {
           try {
-            const file = await repo!.loadFile(path);
-            if (!file) return { index: null, error: `No existe ${path}` };
-            return { index: new CatalogIndex(await file.readCatalog()) };
+            const { catalog, warnings } = await loadCatalog(repo!, path);
+            return { index: new CatalogIndex(catalog), warnings };
           } catch (e: any) {
             return { index: null, error: e instanceof FileNotFoundError ? `No existe ${path}` : (e?.message ?? String(e)) };
           }
@@ -130,10 +138,15 @@ export function useDiagramNavigation(repo: Repository | null) {
         const model = await readModel(stack[stack.length - 1].path);
         const catalogPath = dirOf(stack[0].path) + CATALOG_FILE;
         if (fresh) catalogCache.current.delete(catalogPath);
-        const { index: catalog, error: catalogError } = usesCatalog(model) ? await readCatalog(catalogPath) : { index: null };
+        const { index: catalog, error: catalogError, warnings: catalogWarnings = [] } = usesCatalog(model)
+          ? await readCatalog(catalogPath)
+          : { index: null };
         if (req !== request.current) return 'stale';
         const view = resolveDiagram(model, catalog);
-        if (catalogError) view.warnings.unshift(`Catálogo: ${catalogError}`);
+        // Diagramas generados (detalle de un nodo): su título sale del catálogo
+        const current = stack[stack.length - 1].path;
+        if (view.title && !titles.current.has(current)) titles.current.set(current, view.title);
+        view.warnings.unshift(...(catalogError ? [catalogError] : catalogWarnings).map((w) => `Catálogo: ${w}`));
         if (history !== 'none') {
           const diagrams = stack.slice(1).map((e) => toUrlPath(stack[0].path, e.path));
           writeUrl({ file, diagrams, sel: restore.sel, vp: restore.vp }, history);
@@ -240,7 +253,13 @@ export function useDiagramNavigation(repo: Repository | null) {
   const clearError = React.useCallback(() => setState((s) => ({ ...s, error: null })), []);
   /** Etiqueta para las migas de pan */
   const labelOf = React.useCallback(
-    (e: NavEntry) => e.title ?? titles.current.get(e.path) ?? (e.path.includes(INLINE_SEP) ? e.path.split(INLINE_SEP).pop()! : stripExt(baseName(e.path))),
+    (e: NavEntry) => {
+      if (e.title ?? titles.current.get(e.path)) return e.title ?? titles.current.get(e.path)!;
+      if (!e.path.includes(INLINE_SEP)) return stripExt(baseName(e.path));
+      const last = e.path.split(INLINE_SEP).pop()!;
+      // `#pagos/cobrar` (detalle de un nodo interno): su id local
+      return last.startsWith(DETAIL_PREFIX) ? baseName(last.slice(DETAIL_PREFIX.length)) : last;
+    },
     [],
   );
 

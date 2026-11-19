@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "datos-usuario", "type": "microservice", "name": "datos-usuario", "description": "Fuente única de los datos del usuario (perfil, preferencias, consentimientos). La consultan varios microfrontends y backends.", "props": {"tech": "quarkus", "baseUrl": "https://datos-usuario.portal.internal"},
+      "nodes": [
+        {"id": "consultar-perfil", "type": "useCase", "name": "Consultar perfil", "props": {"trigger": "REST", "endpoint": "GET /users/{id}"},
+          "dependencies": [
+            {"target": "perfil-repo", "type": "call"},
+            {"target": "clientes-client", "type": "call"},
+            {"target": "preferencias-client", "type": "call"}
+          ]},
+        {"id": "actualizar-perfil", "type": "useCase", "name": "Actualizar perfil", "props": {"trigger": "REST", "endpoint": "PUT /users/{id}", "transactional": true},
+          "dependencies": [
+            {"target": "perfil-repo", "type": "call"},
+            {"target": "clientes-client", "type": "call"}
+          ]},
+        {"id": "perfil-repo", "type": "serviceGateway", "name": "UserProfileRepository", "props": {"port": "UserProfileStore", "client": "Hibernate Panache"},
+          "dependencies": [
+            {"target": "postgres", "type": "config", "technology": "JDBC"}
+          ]},
+        {"id": "clientes-client", "type": "serviceGateway", "name": "CustomersClient", "props": {"port": "Customers"},
+          "dependencies": [
+            {"target": "api-clientes", "type": "config", "label": "REST"}
+          ]},
+        {"id": "preferencias-client", "type": "serviceGateway", "name": "PreferencesClient", "props": {"port": "UserPreferences"},
+          "dependencies": [
+            {"target": "api-preferencias", "type": "config", "label": "REST"}
+          ]}
+      ]}
+  ]
+}

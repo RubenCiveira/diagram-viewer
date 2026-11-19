@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleAlert, Link2, TriangleAlert, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleAlert, Link2, ScanSearch, TriangleAlert, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { findEdgeType, findNodeType, type PaletteInterface } from '../../palette';
 import type { DetailField, DetailTarget, ElementDetail } from '../../palette/DiagramElementType';
@@ -12,6 +12,8 @@ type Props = {
   path: string;
   palette: PaletteInterface;
   onClose: () => void;
+  /** Abre un diagrama relativo al actual (el detalle interno de un nodo) */
+  onOpenDiagram: (path: string, title?: string) => void;
 };
 
 type View = {
@@ -25,13 +27,15 @@ type View = {
   tags?: string[];
   /** Relaciones del nodo en el catálogo (estén o no pintadas) */
   relations?: RelationRow[];
+  /** Nodo con nodos internos: ruta de su detalle y cuántos tiene */
+  inner?: { path: string; count: number };
   footer: string;
 };
 
 type RelationRow = { dir: 'out' | 'in'; other: string; type?: string; label?: string; shown: boolean; uses?: boolean };
 
 /** Ficha lateral con los datos del nodo o la arista seleccionados. */
-export default function DetailPanel({ target, model, catalog, path, palette, onClose }: Props) {
+export default function DetailPanel({ target, model, catalog, path, palette, onClose, onOpenDiagram }: Props) {
   const view = React.useMemo(
     () => (target ? buildView(target, model, catalog, path, palette) : null),
     [target, model, catalog, path, palette],
@@ -66,6 +70,17 @@ export default function DetailPanel({ target, model, catalog, path, palette, onC
                   </span>
                 ))}
               </div>
+            )}
+            {view.inner && (
+              <button
+                className="dv-btn dv-btn-primary"
+                onClick={() => onOpenDiagram(view.inner!.path, view.title)}
+                title="Abre un diagrama con sus nodos internos, sus relaciones y las que les llegan"
+              >
+                <ScanSearch size={16} />
+                Ver detalle
+                <span className="dv-btn-count">{view.inner.count}</span>
+              </button>
             )}
             {!!view.errors?.length && <Issues kind="error" items={view.errors} />}
             {!!view.warns?.length && <Issues kind="warn" items={view.warns} />}
@@ -109,6 +124,9 @@ function buildView(
       warns: node.warns,
       footer: `${path} › ${node.id}`,
     };
+    if (node.detail && node.origin.kind === 'ref') {
+      view.inner = { path: node.detail, count: catalog?.children.get(node.origin.catalogId)?.length ?? 0 };
+    }
     if (node.origin.kind === 'ref' && catalog?.nodes.has(node.origin.catalogId)) {
       const id = node.origin.catalogId;
       view.tags = [`Catálogo: ${id}`, ...(node.origin.imported ? ['Importado por una relación'] : [])];
@@ -117,11 +135,24 @@ function buildView(
       const via = (through?: string) => (through ? ` (vía ${label(through)})` : '');
       const label = (cid: string): string => {
         const c = catalog.nodes.get(cid);
-        return c ? (c.name ?? findNodeType(c.type, palette).label({ name: c.name, props: c.props ?? {} })) : cid;
+        if (!c) return cid;
+        const own = c.name ?? findNodeType(c.type, palette).label({ name: c.name, props: c.props ?? {} });
+        // Nodo interno de otro: «Pagos › Cobrar»
+        return c.parent ? `${label(c.parent)} › ${own}` : own;
       };
+      // Con nodos internos, también las de sus internos con el exterior: se indica cuál interviene
+      const innerName = (cid: string) => (cid !== id && catalog.contains(id, cid) ? label(cid).slice(label(id).length + 3) : '');
       view.relations = [
-        ...(catalog.outgoing.get(id) ?? []).map((r) => ({ dir: 'out' as const, other: label(r.target) + via(r.through), type: r.type, label: r.label, shown: shown.has(r.id), uses: r.uses })),
-        ...(catalog.incoming.get(id) ?? []).map((r) => ({ dir: 'in' as const, other: label(r.source) + via(r.through), type: r.type, label: r.label, shown: shown.has(r.id), uses: r.uses })),
+        ...catalog.outgoingDeep(id).map((r) => ({
+          dir: 'out' as const,
+          other: (innerName(r.source) ? `${innerName(r.source)} → ` : '') + label(r.target) + via(r.through),
+          type: r.type, label: r.label, shown: shown.has(r.id), uses: r.uses,
+        })),
+        ...catalog.incomingDeep(id).map((r) => ({
+          dir: 'in' as const,
+          other: label(r.source) + via(r.through) + (innerName(r.target) ? ` → ${innerName(r.target)}` : ''),
+          type: r.type, label: r.label, shown: shown.has(r.id), uses: r.uses,
+        })),
       ];
     }
     return view;
