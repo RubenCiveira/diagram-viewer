@@ -1,6 +1,13 @@
 {
   "version": "1.0",
   "include": ["catalog/mfe-shell.json", "catalog/mfe-login.json", "catalog/mfe-catalogo.json", "catalog/mfe-carrito.json", "catalog/mfe-pedidos.json", "catalog/mfe-perfil.json", "catalog/mfe-soporte.json", "catalog/bff-shell.json", "catalog/bff-login.json", "catalog/bff-catalogo.json", "catalog/bff-carrito.json", "catalog/bff-pedidos.json", "catalog/bff-perfil.json", "catalog/bff-soporte.json", "catalog/datos-usuario.json"],
+  "actionTemplates": [
+    {"name": "view-kibana", "label": "Logs en Kibana", "description": "Dashboard de logs del componente en el entorno elegido.", "url": "https://{{url}}/dashboard/inner/{{component}}", "target": "kibana",
+      "opts": {"url": {"label": "Entorno", "options": [{"label": "dev", "value": "kibana.dev"}, {"label": "pre", "value": "kibana.pre"}, {"label": "pro", "value": "kibana.pro"}]}}},
+    {"name": "open-repo", "label": "Repositorio", "url": "https://git.example.com/portal/{{id}}"},
+    {"name": "deploy", "label": "Desplegar", "description": "Lo ejecuta la aplicación que contiene al visor (escucha el cambio de hash).", "url": "#action=deploy&component={{component}}&env={{env}}",
+      "opts": {"env": ["dev", "pre", "pro"]}}
+  ],
   "nodes": [
     {"id": "api-auth", "type": "api", "name": "API autenticación", "props": {"protocol": "https", "basePath": "/auth", "version": "v3", "auth": "none"}},
     {"id": "api-productos", "type": "api", "name": "API productos", "props": {"protocol": "https", "basePath": "/products", "version": "v2", "auth": "oauth"}},
@@ -20,6 +27,7 @@
     {"id": "mongo", "type": "database", "name": "MongoDB", "description": "Documentos de catálogo, carritos y tickets.", "props": {"tech": "node", "baseUrl": "mongodb://mongo.portal.internal:27017"}},
     {"id": "postgres", "type": "database", "name": "PostgreSQL", "description": "Pedidos y datos de usuario.", "props": {"tech": "spring", "baseUrl": "postgres://pg.portal.internal:5432"}},
     {"id": "gateway", "type": "gateway", "name": "API Gateway", "description": "Entrada única del portal. Enruta hacia los backends y hace de proxy de dos servicios externos.", "props": {"entryHost": "api.portal.example.com", "entryPath": "/api", "rateLimit": 500},
+      "actions": [{"template": "view-kibana", "params": {"component": "gateway"}}],
       "dependencies": [
         {"target": "ext-preferencias", "type": "proxy-service", "label": "proxy-service", "props": {"path": "/api/preferencias"}},
         {"target": "ext-telemetria", "type": "proxy-api", "label": "proxy-api", "props": {"path": "/api/telemetria"}},

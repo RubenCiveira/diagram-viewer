@@ -16,6 +16,143 @@
         "type": "string"
       }
     },
+    "actionTemplates": {
+      "description": "Plantillas de acción que usan los nodos (actions). Las de los ficheros incluidos se suman; con un nombre repetido gana la primera.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Nombre con el que la usan los nodos (template)."
+          },
+          "label": {
+            "description": "Texto del botón.",
+            "type": "string"
+          },
+          "description": {
+            "description": "Texto al pasar el ratón.",
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "URL absoluta (https://…), que se abre en target, o hash (#…), que se asigna a la URL de la página para que la aplicación que contiene al visor lo gestione. Variables: {{var}} (codificada) o {{{var}}} (tal cual). Siempre disponibles: id, name, type, parent y props.<clave> del nodo."
+          },
+          "target": {
+            "description": "Dónde abrir una URL absoluta: _blank (defecto), _self o el nombre de una ventana.",
+            "type": "string"
+          },
+          "params": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "description": "Valores de las variables de la URL ({{var}})."
+          },
+          "opts": {
+            "description": "Variables que se eligen en un diálogo al lanzar la acción (si params no les da ya un valor).",
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "description": "Valor (sirve también de etiqueta)."
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "description": "Texto visible en el diálogo.",
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "string",
+                            "description": "Valor que se sustituye en la URL."
+                          }
+                        },
+                        "required": [
+                          "value"
+                        ],
+                        "description": "Valor a elegir, con su etiqueta.",
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "description": "Valores a elegir."
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "description": "Título del campo en el diálogo (por defecto, el nombre de la variable).",
+                      "type": "string"
+                    },
+                    "options": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "description": "Valor (sirve también de etiqueta)."
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "description": "Texto visible en el diálogo.",
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "string",
+                                "description": "Valor que se sustituye en la URL."
+                              }
+                            },
+                            "required": [
+                              "value"
+                            ],
+                            "description": "Valor a elegir, con su etiqueta.",
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      "description": "Valores a elegir."
+                    }
+                  },
+                  "required": [
+                    "options"
+                  ],
+                  "description": "Valores a elegir, con el título del campo.",
+                  "additionalProperties": false
+                }
+              ],
+              "description": "Variable que se elige en un diálogo al lanzar la acción."
+            }
+          }
+        },
+        "required": [
+          "name",
+          "url"
+        ],
+        "description": "Plantilla de acción reutilizable por los nodos.",
+        "additionalProperties": false
+      }
+    },
     "nodes": {
       "default": [],
       "description": "Nodos del sistema, cada uno con sus relaciones salientes.",
@@ -192,6 +329,147 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/__schema0"
+          }
+        },
+        "actions": {
+          "description": "Acciones que ofrece la ficha del nodo: abrir una URL o cambiar el hash.",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Nombre de una plantilla, sin más."
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "template": {
+                    "description": "Nombre de la plantilla de actionTemplates en la que se basa.",
+                    "type": "string"
+                  },
+                  "label": {
+                    "description": "Texto del botón.",
+                    "type": "string"
+                  },
+                  "description": {
+                    "description": "Texto al pasar el ratón.",
+                    "type": "string"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "URL absoluta (https://…), que se abre en target, o hash (#…), que se asigna a la URL de la página para que la aplicación que contiene al visor lo gestione. Variables: {{var}} (codificada) o {{{var}}} (tal cual). Siempre disponibles: id, name, type, parent y props.<clave> del nodo."
+                  },
+                  "target": {
+                    "description": "Dónde abrir una URL absoluta: _blank (defecto), _self o el nombre de una ventana.",
+                    "type": "string"
+                  },
+                  "params": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean"
+                      ]
+                    },
+                    "description": "Valores de las variables de la URL ({{var}})."
+                  },
+                  "opts": {
+                    "description": "Variables que se eligen en un diálogo al lanzar la acción (si params no les da ya un valor).",
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "anyOf": [
+                        {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "description": "Valor (sirve también de etiqueta)."
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "label": {
+                                    "description": "Texto visible en el diálogo.",
+                                    "type": "string"
+                                  },
+                                  "value": {
+                                    "type": "string",
+                                    "description": "Valor que se sustituye en la URL."
+                                  }
+                                },
+                                "required": [
+                                  "value"
+                                ],
+                                "description": "Valor a elegir, con su etiqueta.",
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "description": "Valores a elegir."
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "label": {
+                              "description": "Título del campo en el diálogo (por defecto, el nombre de la variable).",
+                              "type": "string"
+                            },
+                            "options": {
+                              "minItems": 1,
+                              "type": "array",
+                              "items": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "description": "Valor (sirve también de etiqueta)."
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "label": {
+                                        "description": "Texto visible en el diálogo.",
+                                        "type": "string"
+                                      },
+                                      "value": {
+                                        "type": "string",
+                                        "description": "Valor que se sustituye en la URL."
+                                      }
+                                    },
+                                    "required": [
+                                      "value"
+                                    ],
+                                    "description": "Valor a elegir, con su etiqueta.",
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "description": "Valores a elegir."
+                            }
+                          },
+                          "required": [
+                            "options"
+                          ],
+                          "description": "Valores a elegir, con el título del campo.",
+                          "additionalProperties": false
+                        }
+                      ],
+                      "description": "Variable que se elige en un diálogo al lanzar la acción."
+                    }
+                  }
+                },
+                "description": "Acción del nodo: una plantilla (template) con sus valores, o una acción propia (url). Lo de aquí manda sobre la plantilla; params y opts se combinan.",
+                "additionalProperties": false
+              }
+            ]
           }
         }
       },

@@ -995,3 +995,57 @@ pre {
   font-size: 15px;
   font-weight: 600;
 }
+
+/* ---------- acciones de los nodos ---------- */
+.dv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.dv-action {
+  height: 32px;
+  padding: 0 12px;
+  font-weight: 550;
+  max-width: 100%;
+}
+.dv-action.is-error {
+  color: var(--dv-danger);
+}
+.dv-action-desc {
+  margin: 0;
+  color: var(--dv-muted);
+}
+.dv-action-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dv-action-select span {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dv-muted);
+}
+.dv-action-select select {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--dv-border);
+  border-radius: 8px;
+  background: var(--dv-surface);
+  color: var(--dv-text);
+  font: inherit;
+}
+.dv-action-preview {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--dv-surface-2);
+  color: var(--dv-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+/* Solo da un elemento del que salen los eventos de las acciones: no afecta al diseño */
+.dv-root {
+  display: contents;
+}

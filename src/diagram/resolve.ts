@@ -1,5 +1,6 @@
 import { DETAIL_PREFIX, edgeId, flattenCatalogNodes, includedTypes, INLINE_SEP, INNER_SEP, matchesRelationPattern, UniqueIds } from './model';
 import type {
+  ActionTemplate,
   CatalogEntry,
   CatalogModel,
   CatalogRelation,
@@ -106,8 +107,11 @@ export class CatalogIndex {
   readonly children = new Map<string, CatalogEntry[]>();
   readonly outgoing = new Map<string, CatalogRelation[]>();
   readonly incoming = new Map<string, CatalogRelation[]>();
+  /** Plantillas de acción, por nombre */
+  readonly actionTemplates: ReadonlyMap<string, ActionTemplate>;
 
   constructor(readonly model: CatalogModel) {
+    this.actionTemplates = new Map((model.actionTemplates ?? []).map((t) => [t.name, t]));
     const all = flattenCatalogNodes(model.nodes);
     this.nodes = new Map(all.map((n) => [n.id, n]));
     for (const n of all) if (n.parent) (this.children.get(n.parent) ?? this.children.set(n.parent, []).get(n.parent)!).push(n);

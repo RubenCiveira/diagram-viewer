@@ -11,6 +11,15 @@ import { normPath } from '../diagram/paths';
  * - `sel`: id del nodo o arista con la ficha abierta.
  * - `vp`: desplazamiento x, y y zoom del lienzo.
  */
+/**
+ * ¿El hash es del visor? Vacío o con `file`. Cualquier otro lo ha puesto una acción (`#…`)
+ * para la aplicación que contiene al visor: no se interpreta ni se sobrescribe.
+ */
+export function isViewerHash(hash = location.hash): boolean {
+  const h = hash.replace(/^#/, '');
+  return !h || new URLSearchParams(h).has('file');
+}
+
 export type Viewport = { x: number; y: number; zoom: number };
 
 export type UrlState = {
@@ -67,5 +76,7 @@ export function writeUrl(s: UrlState, mode: 'push' | 'replace') {
 
 /** Cambia sólo algunos campos, conservando el resto de la URL actual. */
 export function patchUrl(patch: Partial<UrlState>, mode: 'push' | 'replace' = 'replace') {
+  // Hay un hash de una acción: se respeta (el visor vuelve a escribir el suyo al navegar)
+  if (!isViewerHash()) return;
   writeUrl({ ...readUrl(), ...patch }, mode);
 }

@@ -5,14 +5,16 @@ import { Eye, FolderOpen, Moon, RefreshCw, Sun } from 'lucide-react';
 import { AppContext } from './AppContext';
 import { useTheme } from './useTheme';
 import { patchUrl, type Viewport } from './urlState';
+import { runAction } from './actionRunner';
 import { ErrorBanner, ErrorScreen, LoadingOverlay } from './ui';
 import DiagramCanvas from '../diagram/ui/DiagramCanvas';
 import DetailPanel from '../diagram/ui/DetailPanel';
 import FileTree from '../diagram/ui/FileTree';
 import HeaderPanel from '../diagram/ui/HeaderPanel';
+import ActionDialog from '../diagram/ui/ActionDialog';
 import { useDiagramNavigation } from '../diagram/useDiagramNavigation';
 import PrintControl from '../print/PrintControl';
-import { baseName, stripExt, type ViewModel, type ViewNode } from '../diagram';
+import { baseName, resolveAction, stripExt, type PreparedAction, type ViewModel, type ViewNode } from '../diagram';
 import { findNodeType } from '../palette';
 import type { DetailTarget, DiagramViewerContext } from '../palette/DiagramElementType';
 import { ModularAppPalette } from '../palette/providers/modular-app';
@@ -42,6 +44,10 @@ export default function App() {
   const [selected, setSelected] = React.useState<ViewNode | null>(null);
   // Los avisos pertenecen a una carga concreta: al navegar dejan de mostrarse
   const [notice, setNoticeState] = React.useState<{ message: string; loadId: number } | null>(null);
+  /** Acción del nodo esperando a que se elijan sus variables */
+  const [pendingAction, setPendingAction] = React.useState<{ action: PreparedAction; nodeId: string; nodeName: string } | null>(null);
+  /** Raíz del visor: de aquí salen los eventos de las acciones (y burbujean hasta quien lo contenga) */
+  const rootRef = React.useRef<HTMLDivElement>(null);
   const nav = useDiagramNavigation(repo);
   const loadIdRef = React.useRef(nav.loadId);
   loadIdRef.current = nav.loadId;
@@ -123,11 +129,30 @@ export default function App() {
     [viewer, setDetail, setNotice, openDiagram],
   );
 
+  const execute = React.useCallback(
+    (action: PreparedAction, nodeId: string, chosen?: Record<string, string>) => {
+      try {
+        runAction(resolveAction(action, nodeId, chosen), rootRef.current ?? window);
+      } catch (e: any) {
+        setNotice(e?.message ?? String(e));
+      }
+    },
+    [setNotice],
+  );
+
+  const onAction = React.useCallback(
+    (action: PreparedAction, nodeId: string, nodeName: string) => {
+      if (action.fields.length) setPendingAction({ action, nodeId, nodeName });
+      else execute(action, nodeId);
+    },
+    [execute],
+  );
+
   // Retroceso: al diagrama padre o, desde el raíz, al árbol
   const { back } = nav;
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Backspace' || (e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return;
+      if (e.key !== 'Backspace' || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable], .dv-modal')) return;
       e.preventDefault();
       back();
     };
@@ -261,7 +286,19 @@ export default function App() {
           palette={palette}
           onClose={() => setDetail(null)}
           onOpenDiagram={openDiagram}
+          onAction={onAction}
         />
+        {pendingAction && (
+          <ActionDialog
+            action={pendingAction.action}
+            nodeName={pendingAction.nodeName}
+            onClose={() => setPendingAction(null)}
+            onRun={(chosen) => {
+              setPendingAction(null);
+              execute(pendingAction.action, pendingAction.nodeId, chosen);
+            }}
+          />
+        )}
         <LoadingOverlay show={nav.loading} />
         {(nav.error || notice?.loadId === nav.loadId) && (
           <ErrorBanner
@@ -276,5 +313,11 @@ export default function App() {
     );
   }
 
-  return <AppContext.Provider value={context}>{body}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={context}>
+      <div ref={rootRef} className="dv-root">
+        {body}
+      </div>
+    </AppContext.Provider>
+  );
 }

@@ -357,7 +357,41 @@ export type CatalogNode = {
    * detalle del nodo; fuera de él, sus relaciones se pintan desde/hacia el padre.
    */
   nodes?: CatalogNode[];
+  /** Acciones del nodo (abrir una URL, cambiar el hash): se ofrecen en su ficha */
+  actions?: (NodeAction | string)[];
 };
+
+/* ----------------------------------------------------------------------------
+ * Acciones de los nodos del catálogo
+ * --------------------------------------------------------------------------*/
+
+/** Valor que se elige en el diálogo de una acción */
+export type ActionOption = { label?: string; value: string };
+
+/** Variable a elegir en el diálogo: la lista de valores, o la lista con su etiqueta */
+export type ActionOpt = (ActionOption | string)[] | { label?: string; options: (ActionOption | string)[] };
+
+/**
+ * Plantilla de acción del catálogo. `url` es una URL absoluta (se abre en `target`) o un hash
+ * (`#…`, lo gestiona la aplicación que contiene al visor). Admite variables: `{{var}}` (se
+ * codifica para URL) y `{{{var}}}` (tal cual).
+ */
+export type ActionTemplate = {
+  name: string;
+  label?: string;
+  description?: string;
+  url: string;
+  target?: string;
+  /** Valores por defecto de las variables */
+  params?: Record<string, ActionParam>;
+  /** Variables que se eligen en un diálogo al lanzar la acción */
+  opts?: Record<string, ActionOpt>;
+};
+
+export type ActionParam = string | number | boolean;
+
+/** Acción de un nodo: usa una plantilla (`template`) o define su propia `url`. Lo que ponga aquí manda. */
+export type NodeAction = Partial<Omit<ActionTemplate, 'name'>> & { template?: string };
 
 /** Separador de los ids completos de los nodos internos: `pagos/cobrar` es `cobrar` dentro de `pagos` */
 export const INNER_SEP = '/';
@@ -401,6 +435,8 @@ export type CatalogModel = {
    */
   include?: string[];
   nodes: CatalogNode[];
+  /** Plantillas de acción, por nombre (las de los ficheros incluidos se suman) */
+  actionTemplates?: ActionTemplate[];
   /** Todas las dependencias de todos los nodos, internos incluidos, con ids completos (derivado de `dependencies` y `uses`) */
   relations: CatalogRelation[];
 };
@@ -422,6 +458,63 @@ const ZDependency = z
     props: ZProps.optional(),
   })
   .describe('Relación saliente de un nodo del catálogo.');
+
+const ZActionOption = z.union([
+  z.string().describe('Valor (sirve también de etiqueta).'),
+  z
+    .object({
+      label: z.string().optional().describe('Texto visible en el diálogo.'),
+      value: z.string().describe('Valor que se sustituye en la URL.'),
+    })
+    .describe('Valor a elegir, con su etiqueta.'),
+]);
+
+const ZActionOpt = z
+  .union([
+    z.array(ZActionOption).min(1).describe('Valores a elegir.'),
+    z
+      .object({
+        label: z.string().optional().describe('Título del campo en el diálogo (por defecto, el nombre de la variable).'),
+        options: z.array(ZActionOption).min(1).describe('Valores a elegir.'),
+      })
+      .describe('Valores a elegir, con el título del campo.'),
+  ])
+  .describe('Variable que se elige en un diálogo al lanzar la acción.');
+
+const ZActionParams = z
+  .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
+  .describe('Valores de las variables de la URL ({{var}}).');
+
+const ZActionFields = {
+  label: z.string().optional().describe('Texto del botón.'),
+  description: z.string().optional().describe('Texto al pasar el ratón.'),
+  url: z
+    .string()
+    .describe(
+      'URL absoluta (https://…), que se abre en target, o hash (#…), que se asigna a la URL de la página para que la aplicación que contiene al visor lo gestione. Variables: {{var}} (codificada) o {{{var}}} (tal cual). Siempre disponibles: id, name, type, parent y props.<clave> del nodo.',
+    ),
+  target: z.string().optional().describe('Dónde abrir una URL absoluta: _blank (defecto), _self o el nombre de una ventana.'),
+  params: ZActionParams.optional(),
+  opts: z
+    .record(z.string(), ZActionOpt)
+    .optional()
+    .describe('Variables que se eligen en un diálogo al lanzar la acción (si params no les da ya un valor).'),
+};
+
+const ZActionTemplate = z
+  .object({ name: z.string().describe('Nombre con el que la usan los nodos (template).'), ...ZActionFields })
+  .describe('Plantilla de acción reutilizable por los nodos.');
+
+const ZNodeAction = z.union([
+  z.string().describe('Nombre de una plantilla, sin más.'),
+  z
+    .object({
+      template: z.string().optional().describe('Nombre de la plantilla de actionTemplates en la que se basa.'),
+      ...ZActionFields,
+      url: ZActionFields.url.optional(),
+    })
+    .describe('Acción del nodo: una plantilla (template) con sus valores, o una acción propia (url). Lo de aquí manda sobre la plantilla; params y opts se combinan.'),
+]);
 
 const ZCatalogNode = z
   .object({
@@ -447,6 +540,7 @@ const ZCatalogNode = z
         .optional()
         .describe('Nodos internos (casos de uso, gateways…), con el mismo formato. Se ven en el detalle del nodo. Su id completo es "<padre>/<id>".');
     },
+    actions: z.array(ZNodeAction).optional().describe('Acciones que ofrece la ficha del nodo: abrir una URL o cambiar el hash.'),
   })
   .describe('Pieza del sistema.');
 
@@ -459,6 +553,10 @@ export const ZCatalogModel = z
       .describe(
         'Otros ficheros de catálogo, con este mismo formato, cuyos nodos se suman a este. Rutas relativas a este fichero ("/" = raíz). Un fichero incluido puede incluir otros.',
       ),
+    actionTemplates: z
+      .array(ZActionTemplate)
+      .optional()
+      .describe('Plantillas de acción que usan los nodos (actions). Las de los ficheros incluidos se suman; con un nombre repetido gana la primera.'),
     nodes: z
       .array(ZCatalogNode)
       .default([])
@@ -490,12 +588,15 @@ function normDep(d: CatalogDependency & { throught?: string }): CatalogDependenc
 export function tryParseCatalog(input: unknown): { ok: true; data: CatalogModel } | { ok: false; error: string } {
   const parsed = ZCatalogModel.safeParse(input);
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
-  const { version, include } = parsed.data;
-  return { ok: true, data: { ...buildCatalog(version, parsed.data.nodes as CatalogNode[]), ...(include?.length ? { include } : {}) } };
+  const { version, include, actionTemplates } = parsed.data;
+  return {
+    ok: true,
+    data: { ...buildCatalog(version, parsed.data.nodes as CatalogNode[], actionTemplates), ...(include?.length ? { include } : {}) },
+  };
 }
 
 /** Catálogo a partir de sus nodos: calcula las relaciones (sirve también para combinar ficheros incluidos) */
-export function buildCatalog(version: string, nodes: CatalogNode[]): CatalogModel {
+export function buildCatalog(version: string, nodes: CatalogNode[], actionTemplates?: ActionTemplate[]): CatalogModel {
   const all = flattenCatalogNodes(nodes);
   const known = new Set(all.map((n) => n.id));
   const ids = new UniqueIds();
@@ -510,7 +611,7 @@ export function buildCatalog(version: string, nodes: CatalogNode[]): CatalogMode
     ...(n.dependencies ?? []).map((d) => relation(n, d, false)),
     ...(n.uses ?? []).map((d) => relation(n, d, true)),
   ]);
-  return { version, nodes, relations };
+  return { version, nodes, relations, ...(actionTemplates?.length ? { actionTemplates } : {}) };
 }
 
 /* ============================================================================

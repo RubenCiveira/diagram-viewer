@@ -105,6 +105,7 @@ Uno por carpeta de diagrama, junto a su `index.json`. Lo usan el diagrama raíz 
 | `dependencies` | no | Relaciones salientes **normales** (llama a, carga, configura…). Se dibujan como flecha **hacia la derecha**. |
 | `uses` | no | Relaciones salientes de **acoplamiento fuerte** (no funciona sin el otro). Se dibujan **hacia abajo**, gruesas y destacadas. |
 | `nodes` | no | **Nodos internos** (casos de uso, gateways…), con este mismo formato. Ver [§3.5](#35-nodos-internos-nodes). |
+| `actions` | no | **Acciones** que ofrece la ficha del nodo: abrir una URL o cambiar el hash. Ver [§3.6](#36-acciones-actions-y-actiontemplates). |
 
 ### 3.2 Relación (entrada de `dependencies` o `uses`)
 
@@ -214,6 +215,75 @@ Recomendaciones:
 
 - Lleva las relaciones con el exterior a los internos que las tienen (la base de datos, al gateway que la usa; la API, al caso de uso que la expone) en vez de declararlas también en el contenedor: el contenedor ya las muestra.
 - Describe los internos solo donde aporten (servicios complejos o críticos); el resto puede quedarse sin `nodes`.
+
+### 3.6 Acciones (`actions` y `actionTemplates`)
+
+Un nodo del catálogo (también un nodo interno) puede ofrecer **acciones** en su ficha: ir a sus logs, a su repositorio, lanzar algo en la aplicación que contiene al visor… Cada acción es una `url` con variables:
+
+- **URL absoluta** (`https://…`): se abre en `target` (`_blank` por defecto, `_self` o el nombre de una ventana, para reutilizarla).
+- **Hash** (`#…`): se asigna al hash de la página (`location.hash`). El visor no hace nada más: la aplicación que lo contiene la ejecuta escuchando `hashchange`.
+
+Para no repetirlas, el catálogo define **plantillas** en `actionTemplates` (en el raíz o en cualquier fichero incluido; con un nombre repetido gana la primera), y los nodos las usan por su nombre:
+
+```json
+{
+  "version": "1.0",
+  "actionTemplates": [
+    { "name": "view-kibana", "label": "Logs en Kibana", "target": "kibana",
+      "url": "https://{{url}}/dashboard/inner/{{component}}",
+      "opts": { "url": { "label": "Entorno", "options": [ { "label": "dev", "value": "kibana.dev" }, { "label": "pre", "value": "kibana.pre" } ] } } },
+    { "name": "open-repo", "label": "Repositorio", "url": "https://git.example.com/portal/{{id}}" },
+    { "name": "deploy", "label": "Desplegar", "url": "#action=deploy&component={{component}}&env={{env}}",
+      "opts": { "env": ["dev", "pre", "pro"] } }
+  ],
+  "nodes": [
+    { "id": "bff-carrito", "type": "microservice", "props": { "baseUrl": "https://bff-carrito.internal" },
+      "actions": [
+        { "template": "view-kibana", "params": { "component": "bff-carrito" } },
+        { "template": "view-kibana", "label": "Logs en pro", "params": { "component": "bff-carrito", "url": "kibana.pro" } },
+        "open-repo",
+        { "label": "Swagger", "url": "{{{props.baseUrl}}}/swagger-ui/index.html" }
+      ] }
+  ]
+}
+```
+
+| Campo | Plantilla | Acción del nodo | Descripción |
+|---|---|---|---|
+| `name` | sí | — | Nombre con el que la usan los nodos. |
+| `template` | — | no | Plantilla en la que se basa. Una acción puede ser solo el nombre (`"open-repo"`). |
+| `url` | sí | si no hay `template` | URL absoluta o hash, con variables. |
+| `label` | no | no | Texto del botón (por defecto, el de la plantilla o su nombre). |
+| `description` | no | no | Texto al pasar el ratón y en el diálogo. |
+| `target` | no | no | Dónde abrir una URL absoluta. |
+| `params` | no | no | Valores de las variables. |
+| `opts` | no | no | Variables que se **eligen en un diálogo** al lanzar la acción: una lista de valores (`["dev", "pre"]` o `[{ "label", "value" }]`) o `{ "label": "Título del campo", "options": [...] }`. |
+
+Lo que ponga la acción del nodo **manda** sobre la plantilla; `params` y `opts` se combinan variable a variable.
+
+**Variables.** `{{var}}` se sustituye **codificada para URL** (`GET /cart` → `GET%20%2Fcart`); `{{{var}}}`, **tal cual** (para meter un trozo de URL, como un host con esquema). Los valores salen, de menos a más prioridad, de:
+
+1. El nodo: `id` (completo: `bff-carrito/ver-carrito`), `name`, `type`, `parent` (el contenedor de un interno) y `props.<clave>` (solo valores simples).
+2. Los `params` de la plantilla.
+3. Los `params` de la acción del nodo.
+4. Lo elegido en el diálogo. Solo se preguntan las variables de `opts` que **no tengan ya valor**: en el ejemplo, «Logs en pro» no abre diálogo porque fija `url`. El diálogo recuerda lo último elegido en cada variable.
+
+Si a una acción le falta una variable, su plantilla no existe o su `url` no es absoluta ni un hash, el botón sale desactivado con el motivo.
+
+**Integración con la aplicación que contiene al visor.** Antes de ejecutar una acción, el visor lanza el evento `diagram-viewer:action` (burbujea, atraviesa el shadow DOM y se puede cancelar), con la acción ya rellena en `detail` (`kind`, `href`, `target`, `label`, `template`, `nodeId`, `values`):
+
+```js
+window.addEventListener('diagram-viewer:action', (e) => {
+  if (e.detail.template === 'deploy') {
+    e.preventDefault();          // la aplicación la ejecuta a su manera; el visor no toca nada
+    deploy(e.detail.values.component, e.detail.values.env);
+  }
+});
+// O, sin cancelar, atendiendo al cambio de hash:
+window.addEventListener('hashchange', () => { /* #action=deploy&component=…&env=… */ });
+```
+
+Un hash de una acción **NO DEBE** llevar el parámetro `file`: es el que usa el visor para su propio estado en la URL. Mientras la URL tiene el hash de una acción, el visor no lo interpreta ni lo sobrescribe; vuelve a escribir el suyo al navegar a otro diagrama, y con «Atrás» se recupera la vista anterior.
 
 ---
 

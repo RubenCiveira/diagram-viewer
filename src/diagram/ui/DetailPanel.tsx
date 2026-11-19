@@ -1,9 +1,10 @@
 import React from 'react';
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleAlert, Link2, ScanSearch, TriangleAlert, X } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, CircleAlert, ExternalLink, Hash, Link2, ScanSearch, TriangleAlert, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { findEdgeType, findNodeType, type PaletteInterface } from '../../palette';
 import type { DetailField, DetailTarget, ElementDetail } from '../../palette/DiagramElementType';
 import type { CatalogIndex, ViewModel, ViewNode } from '../resolve';
+import { prepareActions, type PreparedAction } from '../actions';
 
 type Props = {
   target: DetailTarget | null;
@@ -14,6 +15,8 @@ type Props = {
   onClose: () => void;
   /** Abre un diagrama relativo al actual (el detalle interno de un nodo) */
   onOpenDiagram: (path: string, title?: string) => void;
+  /** Lanza una acción del nodo (`nodeId`: id completo en el catálogo) */
+  onAction: (action: PreparedAction, nodeId: string, nodeName: string) => void;
 };
 
 type View = {
@@ -29,13 +32,15 @@ type View = {
   relations?: RelationRow[];
   /** Nodo con nodos internos: ruta de su detalle y cuántos tiene */
   inner?: { path: string; count: number };
+  /** Acciones del nodo del catálogo */
+  actions?: { nodeId: string; items: PreparedAction[] };
   footer: string;
 };
 
 type RelationRow = { dir: 'out' | 'in'; other: string; type?: string; label?: string; shown: boolean; uses?: boolean };
 
 /** Ficha lateral con los datos del nodo o la arista seleccionados. */
-export default function DetailPanel({ target, model, catalog, path, palette, onClose, onOpenDiagram }: Props) {
+export default function DetailPanel({ target, model, catalog, path, palette, onClose, onOpenDiagram, onAction }: Props) {
   const view = React.useMemo(
     () => (target ? buildView(target, model, catalog, path, palette) : null),
     [target, model, catalog, path, palette],
@@ -81,6 +86,9 @@ export default function DetailPanel({ target, model, catalog, path, palette, onC
                 Ver detalle
                 <span className="dv-btn-count">{view.inner.count}</span>
               </button>
+            )}
+            {!!view.actions?.items.length && (
+              <Actions items={view.actions.items} onRun={(a) => onAction(a, view.actions!.nodeId, view.title)} />
             )}
             {!!view.errors?.length && <Issues kind="error" items={view.errors} />}
             {!!view.warns?.length && <Issues kind="warn" items={view.warns} />}
@@ -129,6 +137,8 @@ function buildView(
     }
     if (node.origin.kind === 'ref' && catalog?.nodes.has(node.origin.catalogId)) {
       const id = node.origin.catalogId;
+      const actions = prepareActions(catalog.nodes.get(id)!, catalog.actionTemplates);
+      if (actions.length) view.actions = { nodeId: id, items: actions };
       view.tags = [`Catálogo: ${id}`, ...(node.origin.imported ? ['Importado por una relación'] : [])];
       view.footer = node.origin.imported ? `catálogo › ${id}` : view.footer;
       const shown = new Set(model.edges.map((e) => e.relationId).filter(Boolean));
@@ -178,6 +188,29 @@ function buildView(
     detail,
     footer: edge.relationId ? `catálogo › ${edge.relationId}` : `${path} › ${edge.id}`,
   };
+}
+
+function Actions({ items, onRun }: { items: PreparedAction[]; onRun: (a: PreparedAction) => void }) {
+  return (
+    <section>
+      <h3 className="dv-detail-section">Acciones</h3>
+      <div className="dv-actions">
+        {items.map((a) => (
+          <button
+            key={a.key}
+            className={`dv-btn dv-action${a.error ? ' is-error' : ''}`}
+            disabled={!!a.error}
+            onClick={() => onRun(a)}
+            title={a.error ?? [a.description, a.kind === 'hash' ? a.url : `${a.url} (${a.target || '_blank'})`].filter(Boolean).join('\n')}
+          >
+            {a.error ? <CircleAlert size={15} /> : a.kind === 'hash' ? <Hash size={15} /> : <ExternalLink size={15} />}
+            {a.label}
+            {a.fields.length > 0 && !a.error && <span className="dv-muted">…</span>}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 function Relations({ rows }: { rows: RelationRow[] }) {

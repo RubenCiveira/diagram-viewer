@@ -1,5 +1,5 @@
 import React from 'react';
-import { readUrl, writeUrl, type Viewport } from '../app/urlState';
+import { isViewerHash, readUrl, writeUrl, type Viewport } from '../app/urlState';
 import { FileNotFoundError, type Repository } from '../storage';
 import { loadCatalog } from '../storage/catalog';
 import { diagramFileOf } from '../storage/manifest';
@@ -202,7 +202,8 @@ export function useDiagramNavigation(repo: Repository | null) {
 
   React.useEffect(() => {
     if (!repo) return;
-    const onPop = () => void syncFromUrl('none');
+    // Un hash que no es del visor lo ha puesto una acción: la vista se queda como está
+    const onPop = () => void (isViewerHash() && syncFromUrl('none'));
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, [repo, syncFromUrl]);

@@ -2,8 +2,16 @@
   "version": "1.0",
   "nodes": [
     {"id": "bff-carrito", "type": "microservice", "name": "bff-carrito", "description": "Backend for frontend del microfrontend **Carrito**.", "props": {"tech": "spring", "baseUrl": "https://bff-carrito.portal.internal"},
+      "actions": [
+        {"template": "view-kibana", "params": {"component": "bff-carrito"}},
+        {"template": "view-kibana", "label": "Logs en Kibana (pro)", "params": {"component": "bff-carrito", "url": "kibana.pro"}},
+        "open-repo",
+        {"template": "deploy", "params": {"component": "bff-carrito"}},
+        {"label": "Swagger", "url": "{{{props.baseUrl}}}/swagger-ui/index.html"}
+      ],
       "nodes": [
         {"id": "ver-carrito", "type": "useCase", "name": "Ver carrito", "props": {"trigger": "REST", "endpoint": "GET /cart"},
+          "actions": [{"label": "Probar el endpoint", "url": "#action=try&component={{parent}}&endpoint={{props.endpoint}}"}],
           "dependencies": [
             {"target": "carrito-client", "type": "call"},
             {"target": "precios-client", "type": "call"},

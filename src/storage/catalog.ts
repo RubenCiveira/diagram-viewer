@@ -1,4 +1,4 @@
-import { buildCatalog, resolvePath, type CatalogModel, type CatalogNode } from '../diagram';
+import { buildCatalog, resolvePath, type ActionTemplate, type CatalogModel, type CatalogNode } from '../diagram';
 import { FileNotFoundError, type Repository } from './Repository';
 
 /**
@@ -18,6 +18,9 @@ export async function loadCatalog(repo: Repository, path: string): Promise<{ cat
   const nodes: CatalogNode[] = [];
   /** Fichero que define cada id (para avisar de repetidos) */
   const owner = new Map<string, string>();
+  /** Plantillas de acción, por nombre: con uno repetido gana la primera */
+  const templates = new Map<string, ActionTemplate>();
+  const templateOwner = new Map<string, string>();
   /** Ficheros ya leídos: un fichero incluido dos veces (por caminos distintos) se suma una sola vez */
   const done = new Set<string>();
 
@@ -29,6 +32,15 @@ export async function loadCatalog(repo: Repository, path: string): Promise<{ cat
 
   const visit = async (file: string, model: CatalogModel, chain: string[]) => {
     done.add(file);
+    for (const t of model.actionTemplates ?? []) {
+      const prev = templateOwner.get(t.name);
+      if (prev) {
+        warnings.push(`Plantilla de acción «${t.name}» repetida en ${file}${prev === file ? '' : ` (ya está en ${prev})`}: se usa la primera`);
+        continue;
+      }
+      templateOwner.set(t.name, file);
+      templates.set(t.name, t);
+    }
     for (const n of model.nodes) {
       const prev = owner.get(n.id);
       if (prev) {
@@ -64,5 +76,5 @@ export async function loadCatalog(repo: Repository, path: string): Promise<{ cat
 
   const root = await read(path);
   await visit(path, root, [path]);
-  return { catalog: buildCatalog(root.version, nodes), warnings };
+  return { catalog: buildCatalog(root.version, nodes, [...templates.values()]), warnings };
 }
