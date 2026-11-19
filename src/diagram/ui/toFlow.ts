@@ -199,3 +199,61 @@ export function toFlow(model: ViewModel, palette: PaletteInterface): { nodes: Fl
 
   return { nodes, edges, warnings };
 }
+
+/** Clave de los tramos de una misma relación que pasa por un intermedio */
+const legKey = (e: ViewEdge) => (e.via && e.relationId ? `${e.relationId}@${e.via}` : undefined);
+
+export type EdgeHighlight = {
+  /** Aristas del nodo (o la arista elegida) y los demás tramos de sus relaciones `through` */
+  direct: Set<string>;
+  /** Alcanzables siguiendo las flechas hacia delante (salida) o hacia atrás (entrada) */
+  transitive: Set<string>;
+};
+
+/**
+ * Aristas a resaltar con la selección. Las directas son las que entran y salen del nodo (o la
+ * arista elegida) más el resto de tramos de las relaciones `through` en las que participan. Las
+ * transitivas son las que se alcanzan siguiendo las flechas en ambos sentidos. Al llegar a un
+ * intermedio por un tramo, sólo se continúa por los tramos de esa misma relación: lo que pasa
+ * por un gateway no hereda las demás relaciones del gateway.
+ */
+export function relatedEdges(edges: FlowEdge[], sel: { nodeId?: string; edgeId?: string }): EdgeHighlight {
+  const key = (e: FlowEdge) => (e.data ? legKey(e.data.edge) : undefined);
+  const via = (e: FlowEdge) => e.data?.edge.via;
+
+  const first = edges.filter((e) => (sel.nodeId ? e.source === sel.nodeId || e.target === sel.nodeId : e.id === sel.edgeId));
+  const legs = new Set(first.map(key).filter(Boolean));
+  const direct = new Set(first.map((e) => e.id));
+  for (const e of edges) if (legs.has(key(e))) direct.add(e.id);
+
+  const reached = new Set<string>();
+  type Step = { node: string; leg?: string };
+  const walk = (start: Step[], forward: boolean) => {
+    const seen = new Set<string>();
+    const queue = [...start];
+    while (queue.length) {
+      const { node, leg } = queue.shift()!;
+      const mark = `${node}|${leg ?? ''}`;
+      if (seen.has(mark)) continue;
+      seen.add(mark);
+      for (const e of edges) {
+        if ((forward ? e.source : e.target) !== node) continue;
+        // Dentro de una relación `through`, sólo sus propios tramos
+        if (leg && key(e) !== leg) continue;
+        reached.add(e.id);
+        const next = forward ? e.target : e.source;
+        queue.push({ node: next, leg: key(e) && next === via(e) ? key(e) : undefined });
+      }
+    }
+  };
+  const stepFrom = (e: FlowEdge, node: string): Step => ({ node, leg: key(e) && node === via(e) ? key(e) : undefined });
+  if (sel.nodeId) {
+    walk([{ node: sel.nodeId }], true);
+    walk([{ node: sel.nodeId }], false);
+  } else {
+    walk(first.map((e) => stepFrom(e, e.target)), true);
+    walk(first.map((e) => stepFrom(e, e.source)), false);
+  }
+  const transitive = new Set([...reached].filter((id) => !direct.has(id)));
+  return { direct, transitive };
+}

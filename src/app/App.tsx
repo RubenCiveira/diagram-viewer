@@ -1,7 +1,7 @@
 import './App.css';
 import React from 'react';
 import { Panel } from '@xyflow/react';
-import { FolderOpen, Moon, RefreshCw, Sun } from 'lucide-react';
+import { Eye, FolderOpen, Moon, RefreshCw, Sun } from 'lucide-react';
 import { AppContext } from './AppContext';
 import { useTheme } from './useTheme';
 import { patchUrl, type Viewport } from './urlState';
@@ -38,6 +38,8 @@ export default function App() {
   const [repo, setRepo] = React.useState<Repository | null>(null);
   const [tree, setTree] = React.useState<{ entries: DiagramEntry[] | null; error?: string }>({ entries: null });
   const [detail, setDetailState] = React.useState<DetailTarget | null>(null);
+  /** Nodo seleccionado en el lienzo: muestra el botón para activarlo */
+  const [selected, setSelected] = React.useState<ViewNode | null>(null);
   // Los avisos pertenecen a una carga concreta: al navegar dejan de mostrarse
   const [notice, setNoticeState] = React.useState<{ message: string; loadId: number } | null>(null);
   const nav = useDiagramNavigation(repo);
@@ -206,6 +208,7 @@ export default function App() {
           colorMode={theme}
           onActivateNode={activateNode}
           onShowDetail={setDetail}
+          onSelectNode={setSelected}
           onWarnings={onWarnings}
           initialViewport={nav.restore.vp}
           selectedId={nav.restore.sel}
@@ -221,7 +224,7 @@ export default function App() {
               onBack={nav.back}
             />
           </Panel>
-          <Panel position="top-right">
+          <Panel position="top-right" className="dv-toolbar-stack">
             <div className="dv-panel dv-toolbar">
               <span className="dv-source" title={`Fuente: ${storage.name()} · ${nav.file}`}>
                 <FolderOpen size={14} /> {nav.file}
@@ -236,6 +239,18 @@ export default function App() {
               />
               {actions(true)}
             </div>
+            {selected && (
+              <div className="dv-panel dv-toolbar">
+                <button
+                  className="dv-icon-btn"
+                  onClick={() => activateNode(selected)}
+                  title={selected.subdiagram ? 'Abrir el subdiagrama' : 'Ver el detalle'}
+                  aria-label={selected.subdiagram ? 'Abrir el subdiagrama' : 'Ver el detalle'}
+                >
+                  <Eye size={15} />
+                </button>
+              </div>
+            )}
           </Panel>
         </DiagramCanvas>
         <DetailPanel

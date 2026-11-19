@@ -174,6 +174,12 @@ pre {
   gap: 2px;
   padding: 4px;
 }
+.dv-toolbar-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
 .dv-source {
   display: inline-flex;
   align-items: center;
@@ -316,12 +322,34 @@ pre {
   padding: 0;
 }
 
+/* Botón de bloqueo en los controles del lienzo (los iconos de lucide usan trazo, no relleno) */
+.react-flow__controls-button.dv-lock svg {
+  fill: none;
+  stroke: currentColor;
+}
+
 /* ---------- aristas ---------- */
 .react-flow__edge.dv-edge.is-clickable {
   cursor: pointer;
 }
 .react-flow__edge-textbg {
   rx: 8;
+}
+/* Resaltado de las aristas del nodo seleccionado (y de los tramos por su intermedio) */
+.react-flow__edge.dv-edge.is-highlighted .react-flow__edge-path {
+  stroke: var(--dv-accent);
+  stroke-width: 3.5 !important;
+}
+.react-flow__edge.dv-edge.is-highlighted .react-flow__edge-text {
+  font-weight: 650;
+}
+.react-flow__edge.dv-edge.is-related .react-flow__edge-path {
+  stroke: var(--dv-accent);
+  stroke-width: 2.5 !important;
+}
+.react-flow__edge.dv-edge.is-dimmed {
+  opacity: 0.12;
+  transition: opacity 0.15s;
 }
 .react-flow__edge-text {
   font-size: 11px;
