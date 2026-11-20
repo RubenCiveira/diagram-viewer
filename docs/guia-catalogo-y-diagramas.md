@@ -407,6 +407,12 @@ Un nodo `ref` pinta, por defecto, **solo ese nodo**. Para traer relaciones del c
 - Patrón `"tipoDeRelación/tipoDeNodo"`, con `*` como comodín. El tipo de nodo es el del **otro extremo**. Ejemplos: `"*/*"` (todo), `"call/microservice"`, `"*/api"`, `"config"` (solo el tipo de relación).
 - Solo pinta las relaciones que sigue, más los nodos del otro extremo.
 
+Los mismos patrones valen en un selector **por tipo**: se aplican a cada nodo de ese tipo, igual que si se incluyera uno a uno por `ref`. Así, además de los nodos del tipo y las relaciones entre ellos, se traen sus vecinos:
+
+```json
+"include": [ { "type": "microservice", "dependencies": "*/database", "incoming": "call/*" } ]
+```
+
 **Detalle interno de un nodo** — sus nodos internos ([§3.5](#35-nodos-internos-nodes)), sus relaciones y las que les llegan; es lo que abre el botón «Ver detalle»:
 
 ```json

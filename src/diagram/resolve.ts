@@ -333,9 +333,32 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
       for (const rel of catalog.model.relations) if (inside(rel.source) || inside(rel.target)) addRelation(rel, { import: true });
     };
 
+    // El tipo que cuenta es el del nodo que se pinta (el contenedor, si el extremo es interno)
+    const shownType = (cid: string) => catalog.nodes.get(levelOf(cid) ?? cid)?.type;
+    /** Relaciones de `id` que encajan con los patrones `dependencies`/`uses`/`incoming` de la regla */
+    const follow = (id: string, rule: IncludeRule) => {
+      if (!rule.dependencies && !rule.uses && !rule.incoming) return;
+      for (const rel of catalog.outgoingDeep(id)) {
+        const type = shownType(rel.target);
+        if (!type || !matchesRelationPattern(rel.uses ? rule.uses : rule.dependencies, rel.type, type)) continue;
+        own(addRelation(rel, { import: true }).at(-1) ?? endpoint(rel.target, false));
+      }
+      // Entrantes: quién depende de este nodo o lo usa
+      for (const rel of catalog.incomingDeep(id)) {
+        const type = shownType(rel.source);
+        if (!type || !matchesRelationPattern(rule.incoming, rel.type, type)) continue;
+        own(addRelation(rel, { import: true })[0] ?? endpoint(rel.source, false));
+      }
+    };
+
     for (const { rule, index } of rules) {
       if (rule.type) {
-        for (const c of catalog.model.nodes) if (c.type === rule.type) withTemplate(own(endpoint(c.id, true)), rule, index);
+        // Cada nodo del tipo, como si la regla lo incluyera por `ref` (con sus patrones)
+        for (const c of catalog.model.nodes) {
+          if (c.type !== rule.type) continue;
+          withTemplate(own(endpoint(c.id, true)), rule, index);
+          follow(c.id, rule);
+        }
       }
       if (rule.ref) {
         if (!catalog.nodes.has(rule.ref)) {
@@ -343,19 +366,7 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
           continue;
         }
         withTemplate(own(endpoint(rule.ref, true)), rule, index);
-        // El tipo que cuenta es el del nodo que se pinta (el contenedor, si el extremo es interno)
-        const shownType = (cid: string) => catalog.nodes.get(levelOf(cid) ?? cid)?.type;
-        for (const rel of catalog.outgoingDeep(rule.ref)) {
-          const type = shownType(rel.target);
-          if (!type || !matchesRelationPattern(rel.uses ? rule.uses : rule.dependencies, rel.type, type)) continue;
-          own(addRelation(rel, { import: true }).at(-1) ?? endpoint(rel.target, false));
-        }
-        // Entrantes: quién depende de este nodo o lo usa
-        for (const rel of catalog.incomingDeep(rule.ref)) {
-          const type = shownType(rel.source);
-          if (!type || !matchesRelationPattern(rule.incoming, rel.type, type)) continue;
-          own(addRelation(rel, { import: true })[0] ?? endpoint(rel.source, false));
-        }
+        follow(rule.ref, rule);
       }
       if (rule.detail) addDetail(rule.detail);
     }

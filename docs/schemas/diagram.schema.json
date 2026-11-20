@@ -60,15 +60,15 @@
             "type": "string"
           },
           "dependencies": {
-            "description": "Con ref: sus dependencias que encajen con \"tipoDeRelación/tipoDeNodo\" (* = cualquiera).",
+            "description": "Con ref o type: sus dependencias que encajen con \"tipoDeRelación/tipoDeNodo\" (* = cualquiera).",
             "type": "string"
           },
           "uses": {
-            "description": "Con ref: sus usos que encajen con \"tipoDeRelación/tipoDeNodo\".",
+            "description": "Con ref o type: sus usos que encajen con \"tipoDeRelación/tipoDeNodo\".",
             "type": "string"
           },
           "incoming": {
-            "description": "Con ref: relaciones que le llegan que encajen con \"tipoDeRelación/tipoDeNodo\".",
+            "description": "Con ref o type: relaciones que le llegan que encajen con \"tipoDeRelación/tipoDeNodo\".",
             "type": "string"
           },
           "detail": {

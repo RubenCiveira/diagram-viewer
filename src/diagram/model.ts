@@ -106,7 +106,7 @@ export type DiagramModel = {
 
 /**
  * Selector de nodos del catálogo:
- * - `type`: todos los nodos de ese tipo;
+ * - `type`: todos los nodos de ese tipo (cada uno con los mismos patrones que `ref`, si los hay);
  * - `ref`: un nodo concreto (`$self` = el nodo para el que se genera la plantilla), siguiendo
  *   sus relaciones salientes de `dependencies` y `uses`, y las entrantes (`incoming`), que
  *   encajen con el patrón `"tipoDeRelación/tipoDeNodo"` (`*` = cualquiera; el tipo de nodo es el
@@ -262,12 +262,12 @@ export const ZDiagramModel = z
             dependencies: z
               .string()
               .optional()
-              .describe('Con ref: sus dependencias que encajen con "tipoDeRelación/tipoDeNodo" (* = cualquiera).'),
-            uses: z.string().optional().describe('Con ref: sus usos que encajen con "tipoDeRelación/tipoDeNodo".'),
+              .describe('Con ref o type: sus dependencias que encajen con "tipoDeRelación/tipoDeNodo" (* = cualquiera).'),
+            uses: z.string().optional().describe('Con ref o type: sus usos que encajen con "tipoDeRelación/tipoDeNodo".'),
             incoming: z
               .string()
               .optional()
-              .describe('Con ref: relaciones que le llegan que encajen con "tipoDeRelación/tipoDeNodo".'),
+              .describe('Con ref o type: relaciones que le llegan que encajen con "tipoDeRelación/tipoDeNodo".'),
             detail: z
               .string()
               .optional()
