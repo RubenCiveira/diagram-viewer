@@ -3,7 +3,7 @@
 #   release/<versión>/config.js           → config.js
 #   example/*                             → raíz (index.json, public/…)
 #
-# Requiere en Settings → Pages → Build and deployment → Source: "GitHub Actions".
+# Se publica en la rama gh-pages: en Settings → Pages → Source, "Deploy from a branch" → gh-pages / (root).
 name: gh-pages
 
 on:
@@ -12,9 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
@@ -23,9 +21,6 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -54,11 +49,9 @@ jobs:
           cp "$RELEASE/config.js" _site/config.js
           ls -R _site | head -50
 
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
+      - name: Publicar en gh-pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: _site
-
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: _site
