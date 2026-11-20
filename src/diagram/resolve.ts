@@ -60,6 +60,24 @@ export type ViewEdge = DiagramEdge & {
   lifted?: boolean;
 };
 
+/**
+ * Relación completa que pasa por un intermedio (`through`). En el lienzo sólo están sus tramos,
+ * que además se fusionan con otros iguales; esto conserva origen, intermedio y destino.
+ */
+export type ViewRoute = {
+  relationId: string;
+  source: string;
+  via: string;
+  target: string;
+  /** Nombre del nodo interno que interviene, si el extremo se pinta sobre su contenedor */
+  innerSource?: string;
+  innerTarget?: string;
+  label?: string;
+  technology?: string;
+  type?: string;
+  uses?: boolean;
+};
+
 export type ViewModel = {
   title?: string;
   description?: string;
@@ -67,6 +85,8 @@ export type ViewModel = {
   layout?: LayoutAlgorithm;
   nodes: ViewNode[];
   edges: ViewEdge[];
+  /** Relaciones `through` pintadas como tramos (ids de la vista) */
+  routes: ViewRoute[];
   /** Cajas que agrupan nodos */
   groups: ViewGroup[];
   warnings: string[];
@@ -175,6 +195,7 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
 
   const ids = new UniqueIds();
   const edges: ViewEdge[] = model.edges.map((e) => ({ ...e, id: ids.next(e.source, e.target) }));
+  const routes: ViewRoute[] = [];
   /** Pares origen→destino que el diagrama dibuja explícitamente */
   const drawn = new Set(edges.map((e) => edgeId(e.source, e.target)));
   if (catalog) {
@@ -265,6 +286,24 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
           technology: first ? rel.technology : undefined,
           props: rel.props,
         });
+        if (src !== via && via !== dst) {
+          const inner = (v: ViewNode, cid: string) => {
+            if (catalogIdOf(v) === cid) return undefined;
+            return catalog.nodes.get(cid)?.name ?? cid.split('/').pop();
+          };
+          routes.push({
+            relationId: rel.id,
+            source: src.id,
+            via: via.id,
+            target: dst.id,
+            innerSource: inner(src, rel.source),
+            innerTarget: inner(dst, rel.target),
+            label: rel.label,
+            technology: rel.technology,
+            type: rel.type,
+            uses: rel.uses,
+          });
+        }
         if (src !== via && !drawn.has(edgeId(src.id, via.id))) edges.push(leg(src, via, true));
         if (via !== dst && !drawn.has(edgeId(via.id, dst.id))) edges.push(leg(via, dst, false));
         return;
@@ -416,11 +455,13 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
   // Tipos incluidos: filtra los nodos importados (los declarados se pintan siempre) y sus aristas
   let keep = nodes;
   let keepEdges = edges;
+  let keepRoutes = routes;
   if (includeTypes.length) {
     const types = new Set(includeTypes);
     keep = nodes.filter((n) => !(n.origin.kind === 'ref' && n.origin.imported) || types.has(n.type));
     const ids = new Set(keep.map((n) => n.id));
     keepEdges = edges.filter((e) => ids.has(e.source) && ids.has(e.target));
+    keepRoutes = routes.filter((r) => ids.has(r.source) && ids.has(r.via) && ids.has(r.target));
   }
 
   // Sin título: el nombre del nodo de la primera regla `ref` (p. ej. una plantilla instanciada)
@@ -438,6 +479,7 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
     layout: model.layout,
     nodes: keep,
     edges: keepEdges,
+    routes: keepRoutes,
     groups: resolveGroups(model.groups ?? [], keep),
     warnings,
   };
