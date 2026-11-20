@@ -182,6 +182,7 @@
           "examples": [
             "actor-user",
             "api",
+            "dataGateway",
             "database",
             "ext-mfe-component",
             "ext-microfront",
@@ -197,7 +198,8 @@
             "screen",
             "serviceGateway",
             "shellUi",
-            "useCase"
+            "useCase",
+            "utilityService"
           ]
         },
         "name": {

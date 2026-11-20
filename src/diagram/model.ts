@@ -81,6 +81,14 @@ export type DiagramEdge = {
   props?: Record<string, any>;
 };
 
+/** Algoritmos para repartir los nodos de cada capa en el eje transversal (vertical en LR) */
+export const LAYOUT_ALGORITHMS = [
+  { id: 'balanced', label: 'Equilibrado', description: 'Cada nodo busca la media de padres e hijos, así que los de una columna se separan según lo que ocupan sus hijos. Las hojas de un padre que alargarían su columna van en varias subcolumnas.' },
+  { id: 'subtree', label: 'Subárboles', description: 'Cada nodo reserva el espacio de sus descendientes y se centra en ellos. Hojas en subcolumnas, como en balanced.' },
+  { id: 'barycenter', label: 'Baricentro', description: 'El anterior: cada nodo se alinea con la media de sus predecesores, capa a capa, y las hojas van siempre en una sola columna.' },
+] as const;
+export type LayoutAlgorithm = (typeof LAYOUT_ALGORITHMS)[number]['id'];
+
 export type DiagramModel = {
   version: string;
   /** Título visible en la cabecera y las migas de pan */
@@ -89,6 +97,8 @@ export type DiagramModel = {
   description?: string;
   /** Dirección del autolayout: izquierda→derecha o arriba→abajo */
   direction?: 'LR' | 'TB';
+  /** Algoritmo del autolayout para repartir cada capa (por defecto `balanced`) */
+  layout?: LayoutAlgorithm;
   /**
    * Qué nodos del catálogo pintar. Cada entrada incluye todos los nodos de su
    * tipo; además se pintan las relaciones del catálogo entre los nodos
@@ -253,6 +263,14 @@ export const ZDiagramModel = z
       .enum(['LR', 'TB'])
       .optional()
       .describe('Dirección del autolayout: LR (izquierda→derecha, defecto) o TB (arriba→abajo).'),
+    layout: z
+      .enum(LAYOUT_ALGORITHMS.map((a) => a.id) as [LayoutAlgorithm, ...LayoutAlgorithm[]])
+      .optional()
+      .describe(
+        'Algoritmo del autolayout para repartir los nodos de cada capa: ' +
+          LAYOUT_ALGORITHMS.map((a) => `${a.id} (${a.description.replace(/\.$/, '')})`).join('; ') +
+          '. Por defecto balanced.',
+      ),
     include: z
       .array(
         z

@@ -1,20 +1,22 @@
 import { normPath } from '../../../diagram';
 import { FileNotFoundError, type Repository, type Storage } from '../../Repository';
 import { TextFile } from '../../TextFile';
-import { readManifest } from '../../manifest';
+import { MANIFEST_FILE, readManifest } from '../../manifest';
+import { viewerConfig } from '../../config';
 
 /**
- * Lee los ficheros por HTTP, relativos a la página. Se usa cuando el visor
- * se sirve desde un servidor (o con `npm run dev`): no requiere permisos.
+ * Lee los ficheros por HTTP, relativos a `baseUrl` de config.js (por defecto, la carpeta
+ * de la página). Se usa cuando el visor se sirve desde un servidor (o con `npm run dev`):
+ * no requiere permisos. Si baseUrl es de otro origen, ese servidor debe permitir CORS.
  */
 export class HttpStorage implements Storage {
   private readonly repo = new HttpRepository();
 
-  /** ¿Hay un index.json accesible junto a la página? */
+  /** ¿Hay un índice accesible en baseUrl? */
   static async isAvailable(): Promise<boolean> {
-    if (!/^https?:$/.test(location.protocol)) return false;
+    if (!/^https?:$/.test(new URL(viewerConfig.baseUrl).protocol)) return false;
     try {
-      const r = await fetch(urlOf('index.json'), { method: 'GET', cache: 'no-store' });
+      const r = await fetch(urlOf(MANIFEST_FILE), { method: 'GET', cache: 'no-store' });
       return r.ok;
     } catch {
       return false;
@@ -22,7 +24,8 @@ export class HttpStorage implements Storage {
   }
 
   name(): string {
-    return decodeURIComponent(location.pathname.split('/').slice(-2, -1)[0] || location.host);
+    const base = new URL(viewerConfig.baseUrl);
+    return decodeURIComponent(base.pathname.split('/').slice(-2, -1)[0] || base.host);
   }
 
   gateComponent() {
@@ -35,12 +38,12 @@ export class HttpStorage implements Storage {
 }
 
 function urlOf(path: string): string {
-  return new URL(normPath(path).split('/').map(encodeURIComponent).join('/'), location.href).href;
+  return new URL(normPath(path).split('/').map(encodeURIComponent).join('/'), viewerConfig.baseUrl).href;
 }
 
 class HttpRepository implements Repository {
   name(): string {
-    return location.host;
+    return new URL(viewerConfig.baseUrl).host;
   }
 
   /** Por HTTP no se pueden recorrer carpetas: el índice es la única fuente */

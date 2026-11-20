@@ -10,6 +10,8 @@ import {
   useEdgesState,
   useNodesState,
   type ColorMode,
+  type FitViewOptions,
+  type ReactFlowInstance,
 } from '@xyflow/react';
 import { Lock, LockOpen } from 'lucide-react';
 import type { PaletteInterface } from '../../palette';
@@ -19,6 +21,7 @@ import GroupNode from './GroupNode';
 import { relatedEdges, toFlow, type FlowEdge, type FlowNode } from './toFlow';
 import type { DetailTarget } from '../../palette/DiagramElementType';
 import type { Viewport } from '../../app/urlState';
+import { LAYOUT_ALGORITHMS, type LayoutAlgorithm } from '../model';
 
 const NODE_TYPES = { generic: GenericNode, dvgroup: GroupNode };
 
@@ -27,6 +30,11 @@ const NODE_TYPES = { generic: GenericNode, dvgroup: GroupNode };
  * último elegido para no volver a bloquear al navegar. Al cargar la página empieza bloqueado.
  */
 let lockedPref = true;
+/** Algoritmo de layout elegido en el selector (undefined: el del diagrama). Se recuerda al navegar. */
+let layoutPref: LayoutAlgorithm | undefined;
+
+// Margen superior extra para que la cabecera no tape los nodos
+const FIT_VIEW_OPTIONS: FitViewOptions = { padding: { top: '140px', bottom: '40px', left: '60px', right: '60px' }, maxZoom: 1.2 };
 
 type Props = {
   model: ViewModel;
@@ -67,14 +75,29 @@ export default function DiagramCanvas({
 }: Props) {
   const [locked, setLocked] = React.useState(lockedPref);
   const toggleLock = () => setLocked((v) => (lockedPref = !v));
-  const initial = React.useMemo(() => toFlow(model, palette), [model, palette]);
+  const [algorithm, setAlgorithm] = React.useState(layoutPref);
+  const chooseAlgorithm = (a: LayoutAlgorithm | undefined) => setAlgorithm((layoutPref = a));
+  const initial = React.useMemo(() => toFlow(model, palette, algorithm), [model, palette, algorithm]);
   // La selección inicial sólo se aplica al montar (cada diagrama monta un lienzo nuevo)
-  const [nodes, , onNodesChange] = useNodesState<FlowNode>(
+  const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(
     selectedId ? initial.nodes.map((n) => (n.id === selectedId ? { ...n, selected: true } : n)) : initial.nodes,
   );
-  const [edges, , onEdgesChange] = useEdgesState<FlowEdge>(
+  const [edges, setEdges, onEdgesChange] = useEdgesState<FlowEdge>(
     selectedId ? initial.edges.map((e) => (e.id === selectedId ? { ...e, selected: true } : e)) : initial.edges,
   );
+  // Otro algoritmo de layout: se recolocan los nodos (conservando la selección) y se reencuadra
+  const flow = React.useRef<ReactFlowInstance<FlowNode, FlowEdge> | null>(null);
+  const firstLayout = React.useRef(initial);
+  React.useEffect(() => {
+    if (firstLayout.current === initial) return;
+    const keepSel = <T extends { id: string; selected?: boolean }>(prev: T[], next: T[]) => {
+      const sel = new Set(prev.filter((x) => x.selected).map((x) => x.id));
+      return next.map((x) => (sel.has(x.id) ? { ...x, selected: true } : x));
+    };
+    setNodes((prev) => keepSel(prev, initial.nodes));
+    setEdges((prev) => keepSel(prev, initial.edges));
+    requestAnimationFrame(() => flow.current?.fitView({ ...FIT_VIEW_OPTIONS, duration: 300 }));
+  }, [initial, setNodes, setEdges]);
 
   // Resaltado: con un nodo seleccionado, sus aristas (y el resto de tramos de las que pasan por un
   // intermedio) y, más suaves, las transitivas de entrada y salida; con una arista, igual a partir
@@ -148,8 +171,8 @@ export default function DiagramCanvas({
       fitView={!initialViewport}
       defaultViewport={initialViewport}
       onMoveEnd={(_, vp) => onViewportChange?.(vp)}
-      // Margen superior extra para que la cabecera no tape los nodos
-      fitViewOptions={{ padding: { top: '140px', bottom: '40px', left: '60px', right: '60px' }, maxZoom: 1.2 }}
+      onInit={(i) => (flow.current = i)}
+      fitViewOptions={FIT_VIEW_OPTIONS}
     >
       <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} />
       <Controls showInteractive={false} position="bottom-left">
@@ -164,6 +187,23 @@ export default function DiagramCanvas({
         </ControlButton>
       </Controls>
       <MiniMap position="bottom-right" pannable zoomable nodeBorderRadius={6} />
+      <Panel position="bottom-center" className="dv-panel dv-layout-select">
+        <label title={LAYOUT_ALGORITHMS.find((a) => a.id === (algorithm ?? model.layout ?? 'balanced'))?.description}>
+          <span>Layout</span>
+          <select
+            value={algorithm ?? ''}
+            onChange={(e) => chooseAlgorithm((e.target.value || undefined) as LayoutAlgorithm | undefined)}
+            aria-label="Algoritmo de organización de los nodos"
+          >
+            <option value="">{`Del diagrama (${LAYOUT_ALGORITHMS.find((a) => a.id === (model.layout ?? 'balanced'))!.label})`}</option>
+            {LAYOUT_ALGORITHMS.map((a) => (
+              <option key={a.id} value={a.id} title={a.description}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </Panel>
       {children}
       {!model.nodes.length && (
         <Panel position="top-center" className="dv-empty">

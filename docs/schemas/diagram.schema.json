@@ -25,6 +25,15 @@
         "TB"
       ]
     },
+    "layout": {
+      "description": "Algoritmo del autolayout para repartir los nodos de cada capa: balanced (Cada nodo busca la media de padres e hijos, así que los de una columna se separan según lo que ocupan sus hijos. Las hojas de un padre que alargarían su columna van en varias subcolumnas); subtree (Cada nodo reserva el espacio de sus descendientes y se centra en ellos. Hojas en subcolumnas, como en balanced); barycenter (El anterior: cada nodo se alinea con la media de sus predecesores, capa a capa, y las hojas van siempre en una sola columna). Por defecto balanced.",
+      "type": "string",
+      "enum": [
+        "balanced",
+        "subtree",
+        "barycenter"
+      ]
+    },
     "include": {
       "description": "Selectores de nodos del catálogo que pintar.",
       "type": "array",
@@ -37,6 +46,7 @@
             "examples": [
               "actor-user",
               "api",
+              "dataGateway",
               "database",
               "ext-mfe-component",
               "ext-microfront",
@@ -52,7 +62,8 @@
               "screen",
               "serviceGateway",
               "shellUi",
-              "useCase"
+              "useCase",
+              "utilityService"
             ]
           },
           "ref": {
@@ -129,6 +140,7 @@
               "examples": [
                 "actor-user",
                 "api",
+                "dataGateway",
                 "database",
                 "ext-mfe-component",
                 "ext-microfront",
@@ -145,7 +157,8 @@
                 "screen",
                 "serviceGateway",
                 "shellUi",
-                "useCase"
+                "useCase",
+                "utilityService"
               ]
             },
             "description": "Tipos de nodo que entran en la caja (texto libre)."
@@ -205,6 +218,7 @@
             "examples": [
               "actor-user",
               "api",
+              "dataGateway",
               "database",
               "ext-mfe-component",
               "ext-microfront",
@@ -221,7 +235,8 @@
               "screen",
               "serviceGateway",
               "shellUi",
-              "useCase"
+              "useCase",
+              "utilityService"
             ]
           },
           "ref": {

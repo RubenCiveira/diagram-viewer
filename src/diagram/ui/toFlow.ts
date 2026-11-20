@@ -3,6 +3,7 @@ import { findEdgeType, findNodeType, type PaletteInterface } from '../../palette
 import type { DiagramEdgeType, DiagramEdgeTypeCtx } from '../../palette/DiagramEdgeType';
 import type { DiagramElementType } from '../../palette/DiagramElementType';
 import { autoLayout, placeBeside, type LayoutBox } from '../layout';
+import type { LayoutAlgorithm } from '../model';
 import type { ViewEdge, ViewGroup, ViewModel, ViewNode } from '../resolve';
 
 export type HandleId = 'in' | 'out' | 'parent' | 'children';
@@ -49,8 +50,11 @@ function targetHandle(e: ViewEdge): HandleId {
 /** Color de los usos: destacan sobre las dependencias */
 const USES_COLOR = '#6366f1';
 
-/** Traduce el diagrama resuelto a nodos y aristas de React Flow, calculando posiciones si faltan. */
-export function toFlow(model: ViewModel, palette: PaletteInterface): { nodes: FlowNode[]; edges: FlowEdge[]; warnings: string[] } {
+/**
+ * Traduce el diagrama resuelto a nodos y aristas de React Flow, calculando posiciones si faltan.
+ * `algorithm` fuerza el algoritmo del autolayout (si no, el del diagrama).
+ */
+export function toFlow(model: ViewModel, palette: PaletteInterface, algorithm?: LayoutAlgorithm): { nodes: FlowNode[]; edges: FlowEdge[]; warnings: string[] } {
   const warnings: string[] = [...model.warnings];
   const byId = new Map(model.nodes.map((n) => [n.id, n]));
   const validEdges = model.edges.filter((e) => {
@@ -103,6 +107,7 @@ export function toFlow(model: ViewModel, palette: PaletteInterface): { nodes: Fl
       direction: model.direction,
       rankGap: hasLabels ? 150 : undefined,
       boxGroups: new Set(model.groups.filter((g) => g.layout === 'box').map((g) => g.id)),
+      algorithm: algorithm ?? model.layout,
     });
     placeBeside(model.nodes.filter((n) => n.position).map((n) => boxes.get(n.id)!), free);
   }

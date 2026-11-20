@@ -6,6 +6,7 @@ import type {
   CatalogRelation,
   DiagramGroup,
   IncludeRule,
+  LayoutAlgorithm,
   DiagramEdge,
   DiagramModel,
   DiagramNode,
@@ -63,6 +64,7 @@ export type ViewModel = {
   title?: string;
   description?: string;
   direction: 'LR' | 'TB';
+  layout?: LayoutAlgorithm;
   nodes: ViewNode[];
   edges: ViewEdge[];
   /** Cajas que agrupan nodos */
@@ -433,6 +435,7 @@ export function resolveDiagram(model: DiagramModel, catalog: CatalogIndex | null
     title,
     description: model.description,
     direction: model.direction ?? 'LR',
+    layout: model.layout,
     nodes: keep,
     edges: keepEdges,
     groups: resolveGroups(model.groups ?? [], keep),

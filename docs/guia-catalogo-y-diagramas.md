@@ -178,7 +178,7 @@ Reglas:
 
 ### 3.5 Nodos internos (`nodes`)
 
-Un nodo puede describir su estructura interna: un microservicio, sus **casos de uso** (`useCase`) y sus **gateways** (`serviceGateway`, el acceso a una base de datos o a otro sistema). Los internos son nodos con el mismo formato (`id`, `type`, `name`, `props`, `dependencies`, `uses` y, a su vez, `nodes`) y se relacionan entre sí y con el resto del catálogo:
+Un nodo puede describir su estructura interna: un microservicio, sus **casos de uso** (`useCase`), sus **servicios de utilidad** (`utilityService`, lógica que comparten varios casos de uso) y sus **gateways**: `serviceGateway` (acceso a otro sistema) y `dataGateway` (acceso a su base de datos). Los internos son nodos con el mismo formato (`id`, `type`, `name`, `props`, `dependencies`, `uses` y, a su vez, `nodes`) y se relacionan entre sí y con el resto del catálogo:
 
 ```json
 { "id": "pagos", "type": "microservice", "name": "Pagos",
@@ -307,6 +307,7 @@ Un diagrama es una vista. Fichero mínimo:
 | `title` | recomendado | Título de la cabecera y de las migas de pan. |
 | `description` | no | *Markdown*. |
 | `direction` | no | `"LR"` (izquierda→derecha, por defecto) o `"TB"` (arriba→abajo). Usa `TB` si una capa tiene muchos nodos y pocas capas. |
+| `layout` | no | Cómo se reparten los nodos de cada capa: `"balanced"` (por defecto: cada nodo busca la media de padres e hijos, así que los de una columna se separan según lo que ocupan sus hijos), `"subtree"` (cada nodo reserva el espacio de sus descendientes) o `"barycenter"` (el anterior: cada nodo se alinea con sus predecesores). Con `balanced` y `subtree`, las hojas de un mismo padre (4 o más, sin salidas ni grupo) que alargarían su columna se reparten en varias subcolumnas. El selector **Layout** del lienzo permite compararlos sin tocar el fichero. |
 | `nodes` | no | Nodos declarados (ver [§4.1](#41-nodos-declarados)). Puede faltar si el diagrama se define solo con `include`. |
 | `edges` | no | Aristas propias del diagrama (ver [§4.2](#42-aristas-del-diagrama)). |
 | `include` | no | Selectores de nodos del catálogo (ver [§4.4](#44-include-vistas-por-tipo-o-por-nodo)). |
@@ -499,7 +500,9 @@ Las flechas tienen prioridad: primero se colocan los nodos según sus relaciones
 | `microservice` | Servicio backend (incluidos BFF) | `tech`: `quarkus` \| `spring` \| `php-slim` \| `node`, `baseUrl` |
 | `useCase` | Caso de uso de un servicio (nodo interno, [§3.5](#35-nodos-internos-nodes)) | `trigger` (REST, evento, batch…), `endpoint`, `transactional` (bool) |
 | `screen` | Pantalla de un microfrontend (nodo interno) | `route`, `component` |
-| `serviceGateway` | Gateway (adaptador) de un servicio hacia una base de datos u otro sistema (nodo interno) | `port` (interfaz), `client` (librería) |
+| `utilityService` | Servicio de utilidad de un servicio: lógica reutilizable por varios casos de uso (nodo interno) | `layer`: `domain` \| `application`, `responsibility` |
+| `serviceGateway` | Gateway (adaptador de salida) de un servicio hacia otro sistema (nodo interno) | `port` (interfaz), `client` (librería) |
+| `dataGateway` | Data gateway (adaptador de salida de persistencia, repositorio) de un servicio hacia su base de datos (nodo interno) | `port` (interfaz), `client` (ORM / driver), `entity`, `store` (tabla / colección) |
 | `api` | API (contrato) que consume un servicio | `protocol`: `http` \| `https` \| `grpc`, `auth`: `none` \| `basic` \| `oauth`, `basePath`, `version`, `specUrl` |
 | `database` | Base de datos | `tech`, `baseUrl` |
 | `externalService` | Servicio REST externo | `type`, `name`, `endpoint`, `notes` |

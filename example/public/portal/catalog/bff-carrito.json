@@ -14,21 +14,27 @@
           "actions": [{"label": "Probar el endpoint", "url": "#action=try&component={{parent}}&endpoint={{props.endpoint}}"}],
           "dependencies": [
             {"target": "carrito-client", "type": "call"},
-            {"target": "precios-client", "type": "call"},
+            {"target": "calculo-totales", "type": "call"},
             {"target": "carrito-repo", "type": "call"}
           ]},
         {"id": "modificar-linea", "type": "useCase", "name": "Modificar línea", "props": {"trigger": "REST", "endpoint": "PUT /cart/lines/{id}"},
           "dependencies": [
             {"target": "carrito-client", "type": "call"},
             {"target": "stock-client", "type": "call"},
+            {"target": "calculo-totales", "type": "call"},
             {"target": "carrito-repo", "type": "call"}
           ]},
         {"id": "confirmar-compra", "type": "useCase", "name": "Confirmar compra", "props": {"trigger": "REST", "endpoint": "POST /cart/checkout", "transactional": true},
           "dependencies": [
             {"target": "carrito-client", "type": "call"},
+            {"target": "calculo-totales", "type": "call"},
             {"target": "pagos-client", "type": "call"},
             {"target": "envios-client", "type": "call"},
             {"target": "usuario-client", "type": "call"}
+          ]},
+        {"id": "calculo-totales", "type": "utilityService", "name": "CartTotalsCalculator", "description": "Calcula subtotal, descuentos e impuestos del carrito con los precios vigentes. Lo comparten los tres casos de uso.", "props": {"layer": "domain", "responsibility": "Totales del carrito"},
+          "dependencies": [
+            {"target": "precios-client", "type": "call"}
           ]},
         {"id": "carrito-client", "type": "serviceGateway", "name": "CartsClient", "props": {"port": "Carts"},
           "dependencies": [
@@ -50,7 +56,7 @@
           "dependencies": [
             {"target": "api-envios", "type": "config", "label": "REST"}
           ]},
-        {"id": "carrito-repo", "type": "serviceGateway", "name": "CartSessionRepository", "props": {"port": "CartSession", "client": "Spring Data MongoDB"},
+        {"id": "carrito-repo", "type": "dataGateway", "name": "CartSessionRepository", "props": {"port": "CartSession", "client": "Spring Data MongoDB", "entity": "CartSession", "store": "cart_sessions"},
           "dependencies": [
             {"target": "mongo", "type": "config", "technology": "MongoDB driver"}
           ]},

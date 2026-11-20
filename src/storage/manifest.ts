@@ -1,15 +1,16 @@
 import { normPath } from '../diagram/paths';
 import { ZManifest } from '../diagram/model';
 import { FileNotFoundError, type DiagramEntry, type Repository } from './Repository';
+import { viewerConfig } from './config';
 
 /**
  * Índice de diagramas de la carpeta (`index.json` en la raíz). Sólo contiene
  * nombres y rutas: es lo que permite listar diagramas cuando la fuente no sabe
- * recorrer carpetas (HTTP).
+ * recorrer carpetas (HTTP). Por defecto `index.json`; se puede cambiar en config.js (`index`).
  *
  *   { "diagrams": [ { "path": "public/e-commerce", "name": "E-commerce", "description": "…" } ] }
  */
-export const MANIFEST_FILE = 'index.json';
+export const MANIFEST_FILE = viewerConfig.index;
 
 
 /** Lee el manifiesto. Devuelve null si no existe; lanza error si existe pero no es válido. */

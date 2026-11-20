@@ -1,0 +1,215 @@
+{
+  "version": "1.0",
+  "title": "Desnivel hacia los nodos finales",
+  "description": "Dos casos de uso llaman a tres gateways; el primero tiene **7** dependencias finales y los otros dos, **2** cada uno. Con el layout por baricentro los tres gateways quedan apiñados y las 7 APIs del primero se desparraman. Cambia el algoritmo con el selector **Layout** de abajo.",
+  "nodes": [
+    {
+      "id": "list",
+      "kind": "node",
+      "type": "useCase",
+      "name": "List notification",
+      "props": {
+        "trigger": "REST",
+        "endpoint": "GET /notifications"
+      }
+    },
+    {
+      "id": "delete",
+      "kind": "node",
+      "type": "useCase",
+      "name": "Delete notification",
+      "props": {
+        "trigger": "REST",
+        "endpoint": "DELETE /notifications/{id}"
+      }
+    },
+    {
+      "id": "retrieve",
+      "kind": "node",
+      "type": "serviceGateway",
+      "name": "Retrieve notifications",
+      "props": {
+        "port": "Notifications"
+      }
+    },
+    {
+      "id": "user",
+      "kind": "node",
+      "type": "serviceGateway",
+      "name": "Get user data",
+      "props": {
+        "port": "UserData"
+      }
+    },
+    {
+      "id": "retrieve-2",
+      "kind": "node",
+      "type": "serviceGateway",
+      "name": "Retrieve notifications",
+      "props": {
+        "port": "NotificationsLegacy"
+      }
+    },
+    {
+      "id": "api-1",
+      "kind": "node",
+      "type": "api",
+      "name": "Card contracts consultivo",
+      "props": {
+        "protocol": "https"
+      }
+    },
+    {
+      "id": "api-2",
+      "kind": "node",
+      "type": "api",
+      "name": "Statements status consultivo",
+      "props": {
+        "protocol": "https"
+      }
+    },
+    {
+      "id": "api-3",
+      "kind": "node",
+      "type": "api",
+      "name": "Next bills consultivo",
+      "props": {
+        "protocol": "https"
+      }
+    },
+    {
+      "id": "api-4",
+      "kind": "node",
+      "type": "api",
+      "name": "CMC Sign consultivo",
+      "props": {
+        "protocol": "https"
+      }
+    },
+    {
+      "id": "api-5",
+      "kind": "node",
+      "type": "api",
+      "name": "PFM Aggregations consultivo",
+      "props": {
+        "protocol": "https"
+      }
+    },
+    {
+      "id": "api-6",
+      "kind": "node",
+      "type": "api",
+      "name": "PFM Budget consultivo",
+      "props": {
+        "protocol": "https"
+      }
+    },
+    {
+      "id": "api-7",
+      "kind": "node",
+      "type": "api",
+      "name": "Accounts new movements consultivo",
+      "props": {
+        "protocol": "https"
+      }
+    },
+    {
+      "id": "credits",
+      "kind": "node",
+      "type": "api",
+      "name": "Credits new movements consultivo",
+      "props": {
+        "protocol": "https"
+      }
+    },
+    {
+      "id": "uds",
+      "kind": "node",
+      "type": "api",
+      "name": "UDS consultivo",
+      "props": {
+        "protocol": "https"
+      }
+    },
+    {
+      "id": "sonescus",
+      "kind": "node",
+      "type": "microservice",
+      "name": "sgt-oneweb-sonescuspro",
+      "props": {
+        "tech": "spring"
+      }
+    },
+    {
+      "id": "notif-db",
+      "kind": "node",
+      "type": "database",
+      "name": "notifications-db",
+      "props": {
+        "tech": "postgresql"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "list",
+      "target": "retrieve"
+    },
+    {
+      "source": "list",
+      "target": "user"
+    },
+    {
+      "source": "delete",
+      "target": "user"
+    },
+    {
+      "source": "delete",
+      "target": "retrieve-2"
+    },
+    {
+      "source": "retrieve",
+      "target": "api-1"
+    },
+    {
+      "source": "retrieve",
+      "target": "api-2"
+    },
+    {
+      "source": "retrieve",
+      "target": "api-3"
+    },
+    {
+      "source": "retrieve",
+      "target": "api-4"
+    },
+    {
+      "source": "retrieve",
+      "target": "api-5"
+    },
+    {
+      "source": "retrieve",
+      "target": "api-6"
+    },
+    {
+      "source": "retrieve",
+      "target": "api-7"
+    },
+    {
+      "source": "user",
+      "target": "credits"
+    },
+    {
+      "source": "user",
+      "target": "uds"
+    },
+    {
+      "source": "retrieve-2",
+      "target": "sonescus"
+    },
+    {
+      "source": "retrieve-2",
+      "target": "notif-db"
+    }
+  ]
+}

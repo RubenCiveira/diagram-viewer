@@ -27,17 +27,42 @@ const renameOutput = (fileName: string): Plugin => ({
   },
 });
 
-/**
- * Sólo en el build: carga ./diagram-data.js (generado con `pnpm run pack-data <carpeta>`) antes
- * que la aplicación. Abierto con doble clic, el navegador no deja leer los .json de al lado,
- * pero sí este script; si no existe, el visor pide acceso a la carpeta como siempre.
+/** Configuración de despliegue que el build deja junto al HTML (ver src/storage/config.ts). */
+const CONFIG_FILE = 'config.js';
+const CONFIG_TEMPLATE = `/**
+ * Configuración de diagram-viewer.html. Se puede editar sin recompilar.
+ *
+ * source:  "auto"  → por HTTP si hay índice en baseUrl; si no, diagram-data.js; si no, pide la carpeta.
+ *          "local" → nunca HTTP: diagram-data.js si existe; si no, pide acceso a la carpeta.
+ *          "http"  → siempre por HTTP desde baseUrl (si es otro dominio, debe permitir CORS).
+ * baseUrl: raíz de los diagramas, relativa a la página ("./", "datos/") o absoluta ("https://…/").
+ * index:   índice de diagramas, relativo a baseUrl (o a la carpeta elegida en local).
  */
-const embeddedDataScript = (): Plugin => ({
-  name: 'embedded-data-script',
+window.DIAGRAM_VIEWER_CONFIG = {
+  source: "auto",
+  baseUrl: "./",
+  index: "index.json"
+};
+`;
+
+/**
+ * Sólo en el build: genera ./config.js y lo carga, junto con ./diagram-data.js (generado con
+ * `pnpm run pack-data <carpeta>`), antes que la aplicación. Abierto con doble clic, el navegador
+ * no deja leer los .json de al lado, pero sí estos scripts; si faltan, se usan los valores por
+ * defecto y el visor pide acceso a la carpeta como siempre.
+ */
+const externalScripts = (): Plugin => ({
+  name: 'external-scripts',
   apply: 'build',
   transformIndexHtml: {
     order: 'post',
-    handler: () => [{ tag: 'script', attrs: { src: './diagram-data.js' }, injectTo: 'head-prepend' }],
+    handler: () => [
+      { tag: 'script', attrs: { src: `./${CONFIG_FILE}` }, injectTo: 'head-prepend' },
+      { tag: 'script', attrs: { src: './diagram-data.js' }, injectTo: 'head-prepend' },
+    ],
+  },
+  generateBundle() {
+    this.emitFile({ type: 'asset', fileName: CONFIG_FILE, source: CONFIG_TEMPLATE });
   },
 });
 
@@ -48,7 +73,7 @@ export default defineConfig(({ command }) => ({
   // El empaquetado en un único HTML sólo tiene sentido al compilar; en desarrollo, Vite + React estándar
   plugins: [
     react(),
-    ...(command === 'build' ? [viteSingleFile(), embeddedDataScript(), renameOutput('diagram-viewer.html')] : []),
+    ...(command === 'build' ? [viteSingleFile(), externalScripts(), renameOutput('diagram-viewer.html')] : []),
   ],
   // strictPort: si el puerto está ocupado, falla en vez de saltar a otro (que podría tener service workers ajenos)
   server: { port: DEV_PORT, strictPort: true },

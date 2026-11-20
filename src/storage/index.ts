@@ -2,17 +2,21 @@ import { EmbeddedStorage } from './providers/embedded/EmbeddedStorage';
 import { HttpStorage } from './providers/http/HttpStorage';
 import { LocalFolderStorage } from './providers/local-folder/LocalFolderStorage';
 import type { Storage } from './Repository';
+import { viewerConfig } from './config';
 
 export * from './Repository';
+export { viewerConfig } from './config';
 
 /**
- * Elige la fuente de archivos según cómo se ha abierto el visor:
- * - servido por HTTP con un index.json al lado → se lee directamente (siempre lo último);
- * - abierto como fichero con un diagram-data.js al lado → se usa ese empaquetado, sin permisos;
- * - abierto como fichero sin él → hay que pedir acceso a la carpeta.
+ * Elige la fuente de archivos según `source` de config.js y cómo se ha abierto el visor:
+ * - "http": siempre por HTTP desde baseUrl;
+ * - "auto" (por defecto) y hay índice accesible por HTTP en baseUrl → se lee directamente (siempre lo último);
+ * - si no ("local" o "auto" sin HTTP): diagram-data.js si existe, sin permisos;
+ * - y si tampoco → hay que pedir acceso a la carpeta.
  */
 export async function resolveStorage(): Promise<Storage> {
-  if (await HttpStorage.isAvailable()) return new HttpStorage();
+  if (viewerConfig.source === 'http') return new HttpStorage();
+  if (viewerConfig.source === 'auto' && (await HttpStorage.isAvailable())) return new HttpStorage();
   return EmbeddedStorage.fromWindow() ?? new LocalFolderStorage();
 }
 

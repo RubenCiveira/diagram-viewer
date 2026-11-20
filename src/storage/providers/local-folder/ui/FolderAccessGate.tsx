@@ -1,6 +1,7 @@
 import React from 'react';
 import { FolderOpen, FolderSearch, Upload } from 'lucide-react';
 import type { AccessGate, AccessGateProps } from '../../../Repository';
+import { MANIFEST_FILE } from '../../../manifest';
 import { FilesBackend, HandleBackend } from '../backends';
 import type { LocalFolderStorage } from '../LocalFolderStorage';
 
@@ -25,7 +26,7 @@ function FolderAccessGate({ storage, onReady }: AccessGateProps & { storage: Loc
     if (await storage.hasDiagrams()) {
       onReady();
     } else {
-      setError(`No encuentro diagramas en «${storage.name()}» (ni index.json ni carpetas con index.json). Elige la carpeta de diagramas.`);
+      setError(`No encuentro diagramas en «${storage.name()}» (ni ${MANIFEST_FILE} ni carpetas con index.json). Elige la carpeta de diagramas.`);
       setPhase('choose');
     }
   }, [storage, onReady]);
@@ -127,7 +128,7 @@ function FolderAccessGate({ storage, onReady }: AccessGateProps & { storage: Loc
         <h1>Visor de diagramas</h1>
         <p>
           Para mostrar los diagramas, el navegador necesita permiso para leer la carpeta donde está este fichero (la que
-          contiene <code>index.json</code>):
+          contiene <code>{MANIFEST_FILE}</code>):
         </p>
         <div className="dv-gate-path">{here}</div>
         {error && <div className="dv-gate-error">{error}</div>}

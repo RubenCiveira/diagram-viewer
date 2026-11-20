@@ -7,6 +7,7 @@ import { RemoteSoapRequest } from './edges/remote-soap-request';
 import { RemoteTransactionRequest } from './edges/remote-transaction-request';
 import { RemoteWebRequest } from './edges/remote-web-request';
 import { ApiElement } from './nodes/api';
+import { DataGatewayElement } from './nodes/data-gateway';
 import { DatabaseElement } from './nodes/database';
 import { ExternalServiceElement } from './nodes/external-service';
 import { ExternalSoapElement } from './nodes/external-soap';
@@ -23,6 +24,7 @@ import { ScreenElement } from './nodes/screen';
 import { ServiceGatewayElement } from './nodes/service-gateway';
 import { ShellUiElement } from './nodes/shell-ui';
 import { UseCaseElement } from './nodes/use-case';
+import { UtilityServiceElement } from './nodes/utility-service';
 import { ActorUser } from './nodes/user';
 
 export const ModularAppPalette: PaletteInterface = {
@@ -38,7 +40,9 @@ export const ModularAppPalette: PaletteInterface = {
     new OAuthProxyElement(),
     new MicroserviceElement(),
     new UseCaseElement(),
+    new UtilityServiceElement(),
     new ServiceGatewayElement(),
+    new DataGatewayElement(),
     new DatabaseElement(),
     new ExternalServiceElement(),
     new ExternalSoapElement(),

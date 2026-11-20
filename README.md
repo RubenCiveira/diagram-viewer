@@ -25,7 +25,7 @@ pnpm run build                             # release/0.2.0/diagram-viewer.html
 
 Al compilar solo se vacía la carpeta de esa versión; las anteriores se conservan para poder compartirlas.
 
-Copia `release/<versión>/diagram-viewer.html` en la raíz de la carpeta de diagramas y ábrelo:
+Copia `release/<versión>/diagram-viewer.html` (y su `config.js`) en la raíz de la carpeta de diagramas y ábrelo:
 
 - **Con doble clic, sin permisos**: genera `diagram-data.js` en la carpeta (ver abajo) y abre el HTML directamente.
 - **Como fichero (`file://`) sin `diagram-data.js`**: el visor pide acceso a la carpeta.
@@ -39,6 +39,29 @@ Al abrirlo se muestra el árbol de diagramas de la carpeta. Al elegir uno se abr
 - Pulsar cualquier otro nodo, o una arista, abre su ficha.
 - Retroceso vuelve al diagrama padre (o al árbol) y Esc cierra la ficha.
 
+### Configuración: `config.js`
+
+El build deja un `config.js` junto al HTML, que este carga antes de arrancar. Se edita sin recompilar, así que la misma build sirve para abrirla en local o para publicarla en una web estática:
+
+```js
+window.DIAGRAM_VIEWER_CONFIG = {
+  source: "auto",      // "auto" | "local" | "http"
+  baseUrl: "./",       // raíz de los diagramas: relativa a la página o absoluta
+  index: "index.json"  // índice de diagramas, relativo a baseUrl
+};
+```
+
+| `source` | Comportamiento |
+| --- | --- |
+| `auto` (por defecto) | Por HTTP si hay índice en `baseUrl`; si no, `diagram-data.js`; si no, pide acceso a la carpeta. |
+| `local` | Nunca por HTTP: `diagram-data.js` si existe; si no, pide acceso a la carpeta. |
+| `http` | Siempre por HTTP desde `baseUrl`. Si es otro dominio, ese servidor debe permitir CORS. |
+
+- Las rutas del índice (`diagrams[].path`) y las de los diagramas son relativas a `baseUrl`, no a la ubicación del índice.
+- `index` también se aplica en local: es el fichero que se busca en la raíz de la carpeta elegida.
+- Si `config.js` no está, se usan los valores por defecto.
+- Ejemplo de web estática con los datos aparte: `{ source: "http", baseUrl: "https://example.com/diagramas/", index: "indice.json" }`.
+
 ### Abrirlo con doble clic sin pedir permisos
 
 Los navegadores no dejan que una página abierta como fichero lea los `.json` de su carpeta, pero sí que cargue un `<script>` que esté a su lado. Por eso:
@@ -50,7 +73,7 @@ pnpm run pack-data ../mis-diagramas      # genera ../mis-diagramas/diagram-data.
 - `pack-data` empaqueta todos los `.json` de la carpeta (y subcarpetas) en `diagram-data.js`. Si alguno tiene un error, lo indica y no genera nada.
 - `diagram-viewer.html` carga `./diagram-data.js` si existe y lo usa sin preguntar nada.
 - **Hay que volver a ejecutar `pack-data` cada vez que cambien los diagramas**, y recargar la página.
-- Si el visor se sirve por HTTP, lee siempre los `.json` directamente (`diagram-data.js` se ignora). Si no hay `diagram-data.js`, se pide acceso a la carpeta como siempre.
+- Si el visor se sirve por HTTP (con `source` "auto" o "http"), lee siempre los `.json` directamente (`diagram-data.js` se ignora). Si no hay `diagram-data.js`, se pide acceso a la carpeta como siempre.
 
 ### Estado en la URL
 

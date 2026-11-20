@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronDown, ChevronRight, Folder, Layers } from 'lucide-react';
-import type { DiagramEntry } from '../../storage';
+import { viewerConfig, type DiagramEntry } from '../../storage';
 
 type Props = {
   /** Nombre de la fuente (carpeta u host) */
@@ -54,7 +54,7 @@ export default function FileTree({ source, entries, error, onOpen, actions }: Pr
         {!tree && !error && <p className="dv-muted">Cargando…</p>}
         {tree && !entries!.length && (
           <p className="dv-muted">
-            No hay diagramas. Añádelos al <code>index.json</code> de la raíz: <code>{'{ "diagrams": [ { "path": "carpeta" } ] }'}</code>
+            No hay diagramas. Añádelos al <code>{viewerConfig.index}</code> de la raíz: <code>{'{ "diagrams": [ { "path": "carpeta" } ] }'}</code>
           </p>
         )}
         {tree && <FolderView folder={tree} depth={0} onOpen={onOpen} />}
