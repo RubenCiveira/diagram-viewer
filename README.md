@@ -2,6 +2,8 @@
 
 Visor de solo lectura para diagramas en JSON, construido con React y React Flow. Al compilarlo se genera un único `diagram-viewer.html` autocontenido: se copia en la carpeta de diagramas y se abre con el navegador.
 
+**Demo:** <https://rubenciveira.github.io/diagram-viewer/>. Muestra los diagramas de [example/](example/) y se compila y publica automáticamente en cada push a `main` (ver [.github/workflows/gh-pages.yml](.github/workflows/gh-pages.yml)).
+
 ## Uso
 
 Requiere Node ≥ 20.19 y pnpm 10.

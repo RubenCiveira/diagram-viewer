@@ -1,0 +1,64 @@
+# Compila y publica una demo en GitHub Pages en cada push a main:
+#   pnpm run build → release/<versión>/diagram-viewer.html → index.html
+#   release/<versión>/config.js           → config.js
+#   example/*                             → raíz (index.json, public/…)
+#
+# Requiere en Settings → Pages → Build and deployment → Source: "GitHub Actions".
+name: gh-pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Versión de pnpm tomada de "packageManager" en package.json
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run build
+
+      - name: Montar el sitio
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          RELEASE="release/$VERSION"
+          test -f "$RELEASE/diagram-viewer.html" || { echo "::error::Falta $RELEASE/diagram-viewer.html"; exit 1; }
+
+          mkdir -p _site
+          cp -R example/. _site/
+          cp "$RELEASE/diagram-viewer.html" _site/index.html
+          cp "$RELEASE/config.js" _site/config.js
+          ls -R _site | head -50
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
