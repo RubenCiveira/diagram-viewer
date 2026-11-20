@@ -201,7 +201,7 @@ export default function App() {
           onOpen={nav.selectFile}
           actions={actions(false)}
         />
-        <LoadingOverlay show={nav.loading} />
+        <LoadingOverlay show={nav.loading} progress={nav.progress} />
       </>
     );
   } else if (!nav.view) {
@@ -299,7 +299,7 @@ export default function App() {
             }}
           />
         )}
-        <LoadingOverlay show={nav.loading} />
+        <LoadingOverlay show={nav.loading} progress={nav.progress} />
         {(nav.error || notice?.loadId === nav.loadId) && (
           <ErrorBanner
             message={(nav.error ?? notice?.message)!}

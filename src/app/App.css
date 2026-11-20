@@ -610,6 +610,24 @@ pre {
   font-size: 13px;
   color: var(--dv-muted);
 }
+.dv-progress {
+  position: relative;
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--dv-border);
+  overflow: hidden;
+}
+.dv-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--dv-accent);
+  transition: width 0.15s ease-out;
+}
+.dv-progress-count {
+  font-variant-numeric: tabular-nums;
+  min-width: 3.5em;
+}
 .dv-spinner {
   width: 14px;
   height: 14px;

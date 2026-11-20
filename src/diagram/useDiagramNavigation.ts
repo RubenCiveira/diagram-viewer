@@ -1,7 +1,7 @@
 import React from 'react';
 import { isViewerHash, readUrl, writeUrl, type Viewport } from '../app/urlState';
 import { FileNotFoundError, type Repository } from '../storage';
-import { loadCatalog } from '../storage/catalog';
+import { loadCatalog, type LoadProgress } from '../storage/catalog';
 import { diagramFileOf } from '../storage/manifest';
 import { CATALOG_FILE, DETAIL_PREFIX, detailModel, INLINE_SEP, instantiateTemplate, type DiagramModel } from './model';
 import { baseName, resolvePath, stripExt } from './paths';
@@ -26,6 +26,8 @@ type State = {
   /** Cambia en cada carga correcta (sirve de `key` para reiniciar el lienzo) */
   loadId: number;
   loading: boolean;
+  /** Progreso de la descarga del catálogo y sus includes (null si no se está descargando) */
+  progress: LoadProgress | null;
   error: string | null;
 };
 
@@ -52,6 +54,7 @@ export function useDiagramNavigation(repo: Repository | null) {
     restore: {},
     loadId: 0,
     loading: false,
+    progress: null,
     error: null,
   });
   const stateRef = React.useRef(state);
@@ -116,7 +119,9 @@ export function useDiagramNavigation(repo: Repository | null) {
       if (!cached) {
         cached = (async () => {
           try {
-            const { catalog, warnings } = await loadCatalog(repo!, path);
+            const { catalog, warnings } = await loadCatalog(repo!, path, (progress) =>
+              setState((s) => (s.loading ? { ...s, progress } : s)),
+            );
             return { index: new CatalogIndex(catalog), warnings };
           } catch (e: any) {
             return { index: null, error: e instanceof FileNotFoundError ? `No existe ${path}` : (e?.message ?? String(e)) };
@@ -133,7 +138,7 @@ export function useDiagramNavigation(repo: Repository | null) {
     async (file: string, stack: NavEntry[], history: History, restore: Restore = {}, fresh = false): Promise<LoadResult> => {
       if (!repo || !stack.length) return 'stale';
       const req = ++request.current;
-      setState((s) => ({ ...s, loading: true }));
+      setState((s) => ({ ...s, loading: true, progress: null }));
       try {
         const model = await readModel(stack[stack.length - 1].path);
         const catalogPath = dirOf(stack[0].path) + CATALOG_FILE;
@@ -151,7 +156,7 @@ export function useDiagramNavigation(repo: Repository | null) {
           const diagrams = stack.slice(1).map((e) => toUrlPath(stack[0].path, e.path));
           writeUrl({ file, diagrams, sel: restore.sel, vp: restore.vp }, history);
         }
-        setState((s) => ({ file, stack, model, view, catalog, restore, loadId: s.loadId + 1, loading: false, error: null }));
+        setState((s) => ({ file, stack, model, view, catalog, restore, loadId: s.loadId + 1, loading: false, progress: null, error: null }));
         // Títulos de los diagramas padre que no se han cargado (al entrar por un enlace)
         for (const e of stack.slice(0, -1)) {
           if (e.title || titles.current.has(e.path)) continue;
@@ -162,7 +167,7 @@ export function useDiagramNavigation(repo: Repository | null) {
         return 'ok';
       } catch (e: any) {
         if (req !== request.current) return 'stale';
-        setState((s) => ({ ...s, loading: false, error: e?.message ?? String(e) }));
+        setState((s) => ({ ...s, loading: false, progress: null, error: e?.message ?? String(e) }));
         return 'error';
       }
     },
@@ -173,7 +178,7 @@ export function useDiagramNavigation(repo: Repository | null) {
   const showTree = React.useCallback((history: History) => {
     request.current++;
     if (history !== 'none') writeUrl({ diagrams: [] }, history);
-    setState((s) => ({ ...s, file: null, stack: [], model: null, view: null, catalog: null, restore: {}, loading: false, error: null }));
+    setState((s) => ({ ...s, file: null, stack: [], model: null, view: null, catalog: null, restore: {}, loading: false, progress: null, error: null }));
   }, []);
 
   /**
