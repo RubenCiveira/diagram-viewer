@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "title": "Plataforma e-commerce",
+  "description": "Vista general. Los nodos **apilados** abren otro diagrama; los de borde **discontinuo** se han importado del catálogo al expandir una referencia.",
+  "nodes": [
+    { "id": "clientes", "kind": "node", "type": "actor-user", "name": "Clientes", "description": "Usuarios finales de la tienda.", "props": { "category": "Cliente" } },
+    { "id": "shell", "kind": "ref", "ref": "shell",
+      "outgoing": [ { "type": "contains", "import": true }, { "type": "call", "import": false } ] },
+    { "id": "gateway", "kind": "ref", "ref": "gateway", "expand": "config",
+      "outgoing": [ { "type": "call", "import": false } ] },
+    { "id": "pagos", "kind": "ref", "ref": "pagos", "expand": "config" },
+    { "id": "pedidos", "kind": "diagram", "file": "pedidos/index.json", "name": "Pedidos",
+      "description": "Servicio de pedidos y su integración con inventario, SAP y AEAT." }
+  ],
+  "edges": [
+    { "source": "clientes", "target": "shell" },
+    { "source": "gateway", "target": "pedidos", "label": "REST" }
+  ]
+}

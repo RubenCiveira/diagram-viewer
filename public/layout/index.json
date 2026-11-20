@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "title": "Pruebas de layout",
+  "description": "Diagramas para comparar los algoritmos de organización de nodos (selector **Layout**, abajo en el centro) cuando unos nodos tienen muchas más salidas que sus vecinos de capa.",
+  "nodes": [
+    {
+      "id": "finales",
+      "kind": "diagram",
+      "file": "finales.json",
+      "name": "Desnivel hacia los nodos finales",
+      "description": "3 nodos intermedios con 7, 2 y 2 salidas."
+    },
+    {
+      "id": "intermedios",
+      "kind": "diagram",
+      "file": "intermedios.json",
+      "name": "Desnivel en capas intermedias",
+      "description": "Servicios con 6, 1 y 2 casos de uso, y un caso de uso con 5 salidas."
+    }
+  ],
+  "edges": []
+}

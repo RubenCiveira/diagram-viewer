@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "bff-login", "type": "microservice", "name": "bff-login", "description": "Backend for frontend del microfrontend **Login**.", "props": {"tech": "node", "baseUrl": "https://bff-login.portal.internal"},
+      "nodes": [
+        {"id": "iniciar-sesion", "type": "useCase", "name": "Iniciar sesión", "props": {"trigger": "REST", "endpoint": "POST /session"},
+          "dependencies": [
+            {"target": "auth-client", "type": "call"},
+            {"target": "usuario-client", "type": "call"}
+          ]},
+        {"id": "recuperar-clave", "type": "useCase", "name": "Recuperar contraseña", "props": {"trigger": "REST", "endpoint": "POST /password-reset"},
+          "dependencies": [
+            {"target": "auth-client", "type": "call"}
+          ]},
+        {"id": "aceptar-consentimientos", "type": "useCase", "name": "Aceptar condiciones", "props": {"trigger": "REST", "endpoint": "POST /consents"},
+          "dependencies": [
+            {"target": "consentimientos-client", "type": "call"}
+          ]},
+        {"id": "auth-client", "type": "serviceGateway", "name": "AuthClient", "props": {"port": "Authenticator"},
+          "dependencies": [
+            {"target": "api-auth", "type": "config", "label": "REST"}
+          ]},
+        {"id": "consentimientos-client", "type": "serviceGateway", "name": "ConsentsClient", "props": {"port": "Consents"},
+          "dependencies": [
+            {"target": "api-consentimientos", "type": "config", "label": "REST"}
+          ]},
+        {"id": "usuario-client", "type": "serviceGateway", "name": "UserDataClient", "props": {"port": "UserProfile"},
+          "dependencies": [
+            {"target": "datos-usuario/consultar-perfil", "type": "call", "label": "REST"}
+          ]}
+      ]}
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "mfe-pedidos", "type": "microFront", "name": "Pedidos", "props": {"route": "/pedidos", "remoteEntryUrl": "https://cdn.portal.example.com/pedidos/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
+      "dependencies": [
+        {"target": "cfg-pedidos", "type": "config"}
+      ],
+      "nodes": [
+        {"id": "mis-pedidos", "type": "screen", "name": "Mis pedidos", "props": {"route": "/pedidos"},
+          "dependencies": [
+            {"target": "bff-pedidos/listar-pedidos", "type": "call", "label": "HTTPS", "through": "gateway"},
+            {"target": "datos-usuario/consultar-perfil", "type": "call", "label": "HTTPS", "through": "gateway"}
+          ]},
+        {"id": "detalle-pedido", "type": "screen", "name": "Detalle de pedido", "props": {"route": "/pedidos/:id"},
+          "dependencies": [
+            {"target": "bff-pedidos/ver-pedido", "type": "call", "label": "HTTPS", "through": "gateway"},
+            {"target": "ext-cmp-tiendas", "type": "embeds"}
+          ]},
+        {"id": "devolucion", "type": "screen", "name": "Solicitar devolución", "props": {"route": "/pedidos/:id/devolucion"},
+          "dependencies": [
+            {"target": "bff-pedidos/solicitar-devolucion", "type": "call", "label": "HTTPS", "through": "gateway"}
+          ]}
+      ]},
+    {"id": "cfg-pedidos", "type": "remoteConfig", "name": "config pedidos", "props": {"source": "https://config.portal.example.com/pedidos.json", "format": "json", "refresh": "5 min", "flags": ["devoluciones-online"]}}
+  ]
+}

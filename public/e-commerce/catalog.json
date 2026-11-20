@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "include": ["catalog/pagos.json", "catalog/pedidos.json"],
+  "nodes": [
+    {"id": "shell", "type": "shellUi", "name": "Tienda web", "props": {"routeBase": "/", "authRequired": false},
+      "dependencies": [
+        {"target": "catalogo-mf", "type": "contains", "kind": "parentChild"},
+        {"target": "gateway", "type": "call", "label": "HTTPS"}
+      ]},
+    {"id": "catalogo-mf", "type": "microFront", "name": "Catálogo", "props": {"route": "/catalogo", "version": "2.4.0", "dependsOn": ["design-system", "auth"]},
+      "nodes": [
+        {"id": "listado", "type": "screen", "name": "Listado de productos", "props": {"route": "/catalogo"},
+          "dependencies": [{"target": "orders-api", "type": "call", "through": "gateway", "label": "pedidos recientes"}]},
+        {"id": "pago-rapido", "type": "screen", "name": "Pago rápido", "props": {"route": "/catalogo/pago"},
+          "dependencies": [{"target": "pagos/cobrar", "type": "call", "through": "gateway", "label": "cobro 1-clic"}]}
+      ]},
+    {"id": "gateway", "type": "gateway", "name": "API Gateway", "props": {"entryHost": "api.example.com", "entryPath": "/api", "rateLimit": 200},
+      "dependencies": [
+        {"target": "oauth", "type": "config"},
+        {"target": "pagos", "type": "call", "label": "REST"},
+        {"target": "orders-api", "type": "call", "label": "REST"}
+      ]},
+    {"id": "oauth", "type": "remoteOAuth", "name": "OAuth proxy", "props": {"path": "/auth", "targetUrl": "https://sso.example.com", "cors": true}}
+  ]
+}

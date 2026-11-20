@@ -1,0 +1,59 @@
+{
+  "version": "1.0",
+  "title": "Portal de clientes",
+  "description": "El usuario entra por el frontend, que llama al gateway; el gateway enruta hacia los backends y hace de proxy de dos servicios externos. **Frontend** y **Backend** están definidos aquí mismo por los tipos de nodo que pintan.",
+  "nodes": [
+    { "id": "usuario", "kind": "node", "type": "actor-user", "name": "Usuario", "props": { "category": "Cliente" } },
+    { "id": "frontend", "kind": "diagram", "name": "Frontend",
+      "description": "Todos los nodos del catálogo de tipo `microFront`, `shellUi`, `ext-microfront` y `ext-mfe-component`.",
+      "diagram": {
+        "title": "Frontend",
+        "description": "Todos los microfrontends del catálogo: propios (`microFront`, `shellUi`), páginas de otros equipos que carga la shell (`ext-microfront`) y componentes de otros equipos que se incrustan (`ext-mfe-component`), con las relaciones entre ellos.",
+        "include": [
+          { "type": "microFront",
+            "diagram": {
+              "description": "El microfrontend con todas sus relaciones: sus dependencias y usos, quién lo carga o lo usa, y los nodos del otro extremo.",
+              "include": [ { "ref": "$self", "dependencies": "*/*", "uses": "*/*", "incoming": "*/*" } ]
+            } },
+          { "type": "shellUi" },
+          { "type": "ext-microfront" },
+          { "type": "ext-mfe-component" }
+        ],
+        "groups": [
+          { "name": "Internal", "types": ["microFront"], "color": "#8b5cf6", "layout": "box",
+            "description": "Microfrontends propios" },
+          { "name": "External", "types": ["ext-microfront"], "color": "#f97316", "layout": "box",
+            "description": "Páginas completas de otros equipos que carga la shell" }
+        ]
+      } },
+    { "id": "gateway", "kind": "ref", "ref": "gateway",
+      "outgoing": [ { "type": ["proxy-service", "proxy-api"], "import": false } ] },
+    { "id": "ext-preferencias", "kind": "ref", "ref": "ext-preferencias" },
+    { "id": "ext-telemetria", "kind": "ref", "ref": "ext-telemetria" },
+    { "id": "backend", "kind": "diagram", "name": "Backend", "props": { "color": "#0ea5e9" },
+      "description": "Todos los nodos del catálogo de tipo `gateway`, `microservice` y `database`.",
+      "diagram": {
+        "title": "Backend",
+        "description": "Gateway, backends y bases de datos del catálogo (`gateway`, `microservice` y `database`) y las relaciones entre ellos.",
+        "include": [ { "type": "gateway" }, { "type": "microservice",
+            "diagram": {
+              "description": "El servicio con todas sus relaciones: sus dependencias y usos, quién lo carga o lo usa, y los nodos del otro extremo.",
+              "include": [ { 
+                "ref": "$self", "dependencies": "*/*", "uses": "*/*", "incoming": "*/*"
+                } ],
+                "groups": [
+                   { "name": "Internal", "types": ["microservice"], "color": "#8b5cf6", "layout": "box",
+                   "description": "Microfrontends propios" },
+                   { "name": "Apis", "types": ["api"], "color": "#8b5cf6", "layout": "box",
+                   "description": "Microfrontends propios" }
+                 ]
+            } }, { "type": "database" } 
+        ]
+      } }
+  ],
+  "edges": [
+    { "source": "usuario", "target": "frontend" },
+    { "source": "frontend", "target": "gateway", "label": "HTTPS" },
+    { "source": "gateway", "target": "backend", "label": "REST" }
+  ]
+}

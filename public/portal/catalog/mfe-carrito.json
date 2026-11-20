@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "mfe-carrito", "type": "microFront", "name": "Carrito", "props": {"route": "/carrito", "remoteEntryUrl": "https://cdn.portal.example.com/carrito/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
+      "dependencies": [
+        {"target": "cfg-carrito", "type": "config"}
+      ],
+      "nodes": [
+        {"id": "resumen", "type": "screen", "name": "Resumen del carrito", "props": {"route": "/carrito"},
+          "dependencies": [
+            {"target": "bff-carrito/ver-carrito", "type": "call", "label": "HTTPS", "through": "gateway"},
+            {"target": "bff-carrito/modificar-linea", "type": "call", "label": "HTTPS", "through": "gateway"}
+          ]},
+        {"id": "checkout", "type": "screen", "name": "Checkout", "props": {"route": "/carrito/checkout"},
+          "dependencies": [
+            {"target": "bff-carrito/confirmar-compra", "type": "call", "label": "HTTPS", "through": "gateway"},
+            {"target": "ext-cmp-pasarela", "type": "embeds"}
+          ]}
+      ]},
+    {"id": "cfg-carrito", "type": "remoteConfig", "name": "config carrito", "props": {"source": "https://config.portal.example.com/carrito.json", "format": "json", "refresh": "5 min", "flags": ["pago-express"]}}
+  ]
+}

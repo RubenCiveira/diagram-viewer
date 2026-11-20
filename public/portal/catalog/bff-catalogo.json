@@ -1,0 +1,44 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "bff-catalogo", "type": "microservice", "name": "bff-catalogo", "description": "Backend for frontend del microfrontend **Catálogo**.", "props": {"tech": "quarkus", "baseUrl": "https://bff-catalogo.portal.internal"},
+      "nodes": [
+        {"id": "buscar-productos", "type": "useCase", "name": "Buscar productos", "props": {"trigger": "REST", "endpoint": "GET /products"},
+          "dependencies": [
+            {"target": "productos-client", "type": "call"},
+            {"target": "precios-client", "type": "call"},
+            {"target": "catalogo-repo", "type": "call"}
+          ]},
+        {"id": "ver-producto", "type": "useCase", "name": "Ver producto", "props": {"trigger": "REST", "endpoint": "GET /products/{id}"},
+          "dependencies": [
+            {"target": "productos-client", "type": "call"},
+            {"target": "precios-client", "type": "call"},
+            {"target": "stock-client", "type": "call"}
+          ]},
+        {"id": "recomendar", "type": "useCase", "name": "Recomendar productos", "props": {"trigger": "REST", "endpoint": "GET /products/{id}/related"},
+          "dependencies": [
+            {"target": "recomendaciones-client", "type": "call"}
+          ]},
+        {"id": "productos-client", "type": "serviceGateway", "name": "ProductsClient", "props": {"port": "ProductCatalog"},
+          "dependencies": [
+            {"target": "api-productos", "type": "config", "label": "REST"}
+          ]},
+        {"id": "precios-client", "type": "serviceGateway", "name": "PricesClient", "props": {"port": "PriceList"},
+          "dependencies": [
+            {"target": "api-precios", "type": "config", "label": "REST"}
+          ]},
+        {"id": "stock-client", "type": "serviceGateway", "name": "StockClient", "props": {"port": "StockAvailability"},
+          "dependencies": [
+            {"target": "api-stock", "type": "config", "label": "REST"}
+          ]},
+        {"id": "recomendaciones-client", "type": "serviceGateway", "name": "RecommendationsClient", "props": {"port": "Recommendations"},
+          "dependencies": [
+            {"target": "api-recomendaciones", "type": "config", "label": "REST"}
+          ]},
+        {"id": "catalogo-repo", "type": "serviceGateway", "name": "CatalogCacheRepository", "props": {"port": "CatalogCache", "client": "MongoDB driver"},
+          "dependencies": [
+            {"target": "mongo", "type": "config", "technology": "MongoDB driver"}
+          ]}
+      ]}
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "mfe-login", "type": "microFront", "name": "Login", "props": {"route": "/login", "remoteEntryUrl": "https://cdn.portal.example.com/login/remoteEntry.js", "exposedModule": "./App", "version": "1.0.0"},
+      "dependencies": [
+        {"target": "cfg-login", "type": "config"}
+      ],
+      "nodes": [
+        {"id": "inicio-sesion", "type": "screen", "name": "Inicio de sesión", "props": {"route": "/login"},
+          "dependencies": [
+            {"target": "bff-login/iniciar-sesion", "type": "call", "label": "HTTPS", "through": "gateway"}
+          ]},
+        {"id": "recuperar-clave", "type": "screen", "name": "Recuperar contraseña", "props": {"route": "/login/recuperar"},
+          "dependencies": [
+            {"target": "bff-login/recuperar-clave", "type": "call", "label": "HTTPS", "through": "gateway"}
+          ]},
+        {"id": "consentimientos", "type": "screen", "name": "Aceptar condiciones", "props": {"route": "/login/condiciones"},
+          "dependencies": [
+            {"target": "bff-login/aceptar-consentimientos", "type": "call", "label": "HTTPS", "through": "gateway"}
+          ]}
+      ]},
+    {"id": "cfg-login", "type": "remoteConfig", "name": "config login", "props": {"source": "https://config.portal.example.com/login.json", "format": "json", "refresh": "5 min", "flags": ["mfa", "recordar-sesion"]}}
+  ]
+}

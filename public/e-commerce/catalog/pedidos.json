@@ -1,0 +1,56 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "orders-api", "type": "api", "name": "API pedidos", "props": {"protocol": "https", "basePath": "/orders", "version": "v2", "auth": "oauth"},
+      "dependencies": [
+        {"target": "orders-svc/crear-pedido", "type": "config", "label": "POST /orders"},
+        {"target": "orders-svc/anular-pedido", "type": "config", "label": "DELETE /orders/{id}"}
+      ]},
+    {"id": "orders-svc", "type": "microservice", "name": "orders-service", "description": "Gestiona el ciclo de vida de los pedidos.", "props": {"tech": "quarkus", "baseUrl": "https://orders.internal"},
+      "nodes": [
+        {"id": "crear-pedido", "type": "useCase", "name": "Crear pedido", "props": {"trigger": "REST", "endpoint": "POST /orders", "transactional": true},
+          "dependencies": [
+            {"target": "stock-client", "type": "call"},
+            {"target": "orders-repo", "type": "call"},
+            {"target": "sap-gw", "type": "call"},
+            {"target": "pagos/cobrar", "type": "call", "label": "cobro"}
+          ]},
+        {"id": "anular-pedido", "type": "useCase", "name": "Anular pedido", "props": {"trigger": "REST", "endpoint": "DELETE /orders/{id}"},
+          "dependencies": [
+            {"target": "orders-repo", "type": "call"},
+            {"target": "pagos/reembolsar", "type": "call", "label": "reembolso"}
+          ]},
+        {"id": "facturar", "type": "useCase", "name": "Facturar", "props": {"trigger": "evento", "endpoint": "order.shipped"},
+          "dependencies": [
+            {"target": "orders-repo", "type": "call"},
+            {"target": "aeat-gw", "type": "call"}
+          ]},
+        {"id": "orders-repo", "type": "serviceGateway", "name": "OrderRepository", "props": {"port": "OrderStore", "client": "Hibernate Panache"},
+          "dependencies": [
+            {"target": "orders-db", "type": "config", "technology": "JDBC"}
+          ]},
+        {"id": "sap-gw", "type": "serviceGateway", "name": "SapGateway", "props": {"port": "ErpOrders"},
+          "dependencies": [
+            {"target": "sap", "type": "config", "props": {"code": "ZORD01", "host": "sap-prd"}}
+          ]},
+        {"id": "aeat-gw", "type": "serviceGateway", "name": "AeatGateway", "props": {"port": "InvoiceRegistry"},
+          "dependencies": [
+            {"target": "aeat", "type": "config", "props": {"name": "SuministroFactEmitidas"}}
+          ]},
+        {"id": "stock-client", "type": "serviceGateway", "name": "StockClient", "props": {"port": "StockAvailability", "client": "REST Client"},
+          "dependencies": [
+            {"target": "stock-svc", "type": "call", "label": "stock"}
+          ]}
+      ]},
+    {"id": "orders-db", "type": "database", "name": "orders-db", "props": {"tech": "quarkus"}},
+    {"id": "sap", "type": "externalTransaction", "name": "SAP", "props": {"type": "ERP", "notes": "Alta de pedidos en SAP"}},
+    {"id": "aeat", "type": "externalSoap", "name": "AEAT", "props": {"type": "Facturación", "endpoint": "https://www.agenciatributaria.gob.es"}},
+    {"id": "stock-svc", "type": "microservice", "name": "stock-service", "props": {"tech": "node"},
+      "dependencies": [
+        {"target": "redis", "type": "config"},
+        {"target": "erp", "type": "config"}
+      ]},
+    {"id": "redis", "type": "database", "name": "Redis", "description": "Caché de stock (TTL 30 s)"},
+    {"id": "erp", "type": "externalService", "name": "ERP almacén", "props": {"type": "REST"}}
+  ]
+}

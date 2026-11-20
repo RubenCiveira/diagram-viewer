@@ -1,0 +1,288 @@
+{
+  "version": "1.0",
+  "title": "Desnivel en capas intermedias",
+  "description": "Tres servicios con **6**, **1** y **2** casos de uso. El desnivel aparece ya en la capa intermedia (casos de uso) y se repite en la final: el único caso de uso de *Facturación* tiene **5** dependencias. Cambia el algoritmo con el selector **Layout** de abajo.",
+  "nodes": [
+    {
+      "id": "usuario",
+      "kind": "node",
+      "type": "actor-user",
+      "name": "Usuario",
+      "props": {
+        "category": "Cliente"
+      }
+    },
+    {
+      "id": "gateway",
+      "kind": "node",
+      "type": "gateway",
+      "name": "API Gateway",
+      "props": {
+        "entryHost": "api.example.com"
+      }
+    },
+    {
+      "id": "svc-a",
+      "kind": "node",
+      "type": "microservice",
+      "name": "Pedidos",
+      "props": {
+        "tech": "spring"
+      }
+    },
+    {
+      "id": "svc-b",
+      "kind": "node",
+      "type": "microservice",
+      "name": "Facturación",
+      "props": {
+        "tech": "quarkus"
+      }
+    },
+    {
+      "id": "svc-c",
+      "kind": "node",
+      "type": "microservice",
+      "name": "Avisos",
+      "props": {
+        "tech": "node"
+      }
+    },
+    {
+      "id": "a-uc1",
+      "kind": "node",
+      "type": "useCase",
+      "name": "Crear pedido"
+    },
+    {
+      "id": "a-uc2",
+      "kind": "node",
+      "type": "useCase",
+      "name": "Consultar pedido"
+    },
+    {
+      "id": "a-uc3",
+      "kind": "node",
+      "type": "useCase",
+      "name": "Listar pedidos"
+    },
+    {
+      "id": "a-uc4",
+      "kind": "node",
+      "type": "useCase",
+      "name": "Cancelar pedido"
+    },
+    {
+      "id": "a-uc5",
+      "kind": "node",
+      "type": "useCase",
+      "name": "Modificar dirección"
+    },
+    {
+      "id": "a-uc6",
+      "kind": "node",
+      "type": "useCase",
+      "name": "Repetir pedido"
+    },
+    {
+      "id": "a-repo",
+      "kind": "node",
+      "type": "dataGateway",
+      "name": "OrderRepository",
+      "props": {
+        "port": "Orders"
+      }
+    },
+    {
+      "id": "a-stock",
+      "kind": "node",
+      "type": "serviceGateway",
+      "name": "StockClient",
+      "props": {
+        "port": "Stock"
+      }
+    },
+    {
+      "id": "b-uc1",
+      "kind": "node",
+      "type": "useCase",
+      "name": "Emitir factura",
+      "props": {
+        "transactional": true
+      }
+    },
+    {
+      "id": "b-gw1",
+      "kind": "node",
+      "type": "dataGateway",
+      "name": "InvoiceRepository"
+    },
+    {
+      "id": "b-gw2",
+      "kind": "node",
+      "type": "serviceGateway",
+      "name": "TaxClient"
+    },
+    {
+      "id": "b-gw3",
+      "kind": "node",
+      "type": "serviceGateway",
+      "name": "PdfClient"
+    },
+    {
+      "id": "b-gw4",
+      "kind": "node",
+      "type": "serviceGateway",
+      "name": "MailClient"
+    },
+    {
+      "id": "b-gw5",
+      "kind": "node",
+      "type": "serviceGateway",
+      "name": "LedgerClient"
+    },
+    {
+      "id": "c-uc1",
+      "kind": "node",
+      "type": "useCase",
+      "name": "Enviar aviso"
+    },
+    {
+      "id": "c-uc2",
+      "kind": "node",
+      "type": "useCase",
+      "name": "Consultar avisos"
+    },
+    {
+      "id": "c-gw1",
+      "kind": "node",
+      "type": "serviceGateway",
+      "name": "PushClient"
+    },
+    {
+      "id": "c-repo",
+      "kind": "node",
+      "type": "dataGateway",
+      "name": "NoticeRepository"
+    }
+  ],
+  "edges": [
+    {
+      "source": "usuario",
+      "target": "gateway",
+      "label": "HTTPS"
+    },
+    {
+      "source": "gateway",
+      "target": "svc-a"
+    },
+    {
+      "source": "gateway",
+      "target": "svc-b"
+    },
+    {
+      "source": "gateway",
+      "target": "svc-c"
+    },
+    {
+      "source": "svc-a",
+      "target": "a-uc1"
+    },
+    {
+      "source": "svc-a",
+      "target": "a-uc2"
+    },
+    {
+      "source": "svc-a",
+      "target": "a-uc3"
+    },
+    {
+      "source": "svc-a",
+      "target": "a-uc4"
+    },
+    {
+      "source": "svc-a",
+      "target": "a-uc5"
+    },
+    {
+      "source": "svc-a",
+      "target": "a-uc6"
+    },
+    {
+      "source": "a-uc1",
+      "target": "a-repo"
+    },
+    {
+      "source": "a-uc2",
+      "target": "a-repo"
+    },
+    {
+      "source": "a-uc3",
+      "target": "a-repo"
+    },
+    {
+      "source": "a-uc4",
+      "target": "a-repo"
+    },
+    {
+      "source": "a-uc5",
+      "target": "a-repo"
+    },
+    {
+      "source": "a-uc6",
+      "target": "a-repo"
+    },
+    {
+      "source": "a-uc1",
+      "target": "a-stock"
+    },
+    {
+      "source": "a-uc6",
+      "target": "a-stock"
+    },
+    {
+      "source": "svc-b",
+      "target": "b-uc1"
+    },
+    {
+      "source": "b-uc1",
+      "target": "b-gw1"
+    },
+    {
+      "source": "b-uc1",
+      "target": "b-gw2"
+    },
+    {
+      "source": "b-uc1",
+      "target": "b-gw3"
+    },
+    {
+      "source": "b-uc1",
+      "target": "b-gw4"
+    },
+    {
+      "source": "b-uc1",
+      "target": "b-gw5"
+    },
+    {
+      "source": "svc-c",
+      "target": "c-uc1"
+    },
+    {
+      "source": "svc-c",
+      "target": "c-uc2"
+    },
+    {
+      "source": "c-uc1",
+      "target": "c-gw1"
+    },
+    {
+      "source": "c-uc1",
+      "target": "c-repo"
+    },
+    {
+      "source": "c-uc2",
+      "target": "c-repo"
+    }
+  ]
+}

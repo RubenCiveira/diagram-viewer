@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "pagos", "type": "microservice", "name": "Pagos", "description": "Cobros y reembolsos.\n\n- PCI DSS\n- SLA **99,95 %**", "props": {"tech": "spring", "baseUrl": "https://pagos.internal"},
+      "nodes": [
+        {"id": "cobrar", "type": "useCase", "name": "Cobrar pedido", "props": {"trigger": "REST", "endpoint": "POST /payments", "transactional": true},
+          "dependencies": [
+            {"target": "stripe-gw", "type": "call"},
+            {"target": "pagos-repo", "type": "call"}
+          ]},
+        {"id": "reembolsar", "type": "useCase", "name": "Reembolsar", "props": {"trigger": "REST", "endpoint": "POST /payments/{id}/refund"},
+          "dependencies": [
+            {"target": "stripe-gw", "type": "call"},
+            {"target": "pagos-repo", "type": "call"}
+          ]},
+        {"id": "stripe-gw", "type": "serviceGateway", "name": "StripeGateway", "props": {"port": "PaymentProvider", "client": "stripe-java"},
+          "dependencies": [
+            {"target": "stripe", "type": "config", "props": {"method": "POST", "path": "/v1/charges", "connection": {"readTimeout": "5s", "connectTimeout": "1s"}}}
+          ]},
+        {"id": "pagos-repo", "type": "serviceGateway", "name": "PaymentRepository", "props": {"port": "PaymentStore", "client": "Spring Data JPA"},
+          "dependencies": [
+            {"target": "pagos-db", "type": "config", "technology": "JDBC"}
+          ]}
+      ]},
+    {"id": "pagos-db", "type": "database", "name": "pagos-db", "props": {"tech": "spring"}},
+    {"id": "stripe", "type": "externalService", "name": "Stripe", "props": {"type": "Pasarela de pago", "endpoint": "https://api.stripe.com"}}
+  ]
+}

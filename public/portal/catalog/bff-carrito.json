@@ -1,0 +1,69 @@
+{
+  "version": "1.0",
+  "nodes": [
+    {"id": "bff-carrito", "type": "microservice", "name": "bff-carrito", "description": "Backend for frontend del microfrontend **Carrito**.", "props": {"tech": "spring", "baseUrl": "https://bff-carrito.portal.internal"},
+      "actions": [
+        {"template": "view-kibana", "params": {"component": "bff-carrito"}},
+        {"template": "view-kibana", "label": "Logs en Kibana (pro)", "params": {"component": "bff-carrito", "url": "kibana.pro"}},
+        "open-repo",
+        {"template": "deploy", "params": {"component": "bff-carrito"}},
+        {"label": "Swagger", "url": "{{{props.baseUrl}}}/swagger-ui/index.html"}
+      ],
+      "nodes": [
+        {"id": "ver-carrito", "type": "useCase", "name": "Ver carrito", "props": {"trigger": "REST", "endpoint": "GET /cart"},
+          "actions": [{"label": "Probar el endpoint", "url": "#action=try&component={{parent}}&endpoint={{props.endpoint}}"}],
+          "dependencies": [
+            {"target": "carrito-client", "type": "call"},
+            {"target": "calculo-totales", "type": "call"},
+            {"target": "carrito-repo", "type": "call"}
+          ]},
+        {"id": "modificar-linea", "type": "useCase", "name": "Modificar línea", "props": {"trigger": "REST", "endpoint": "PUT /cart/lines/{id}"},
+          "dependencies": [
+            {"target": "carrito-client", "type": "call"},
+            {"target": "stock-client", "type": "call"},
+            {"target": "calculo-totales", "type": "call"},
+            {"target": "carrito-repo", "type": "call"}
+          ]},
+        {"id": "confirmar-compra", "type": "useCase", "name": "Confirmar compra", "props": {"trigger": "REST", "endpoint": "POST /cart/checkout", "transactional": true},
+          "dependencies": [
+            {"target": "carrito-client", "type": "call"},
+            {"target": "calculo-totales", "type": "call"},
+            {"target": "pagos-client", "type": "call"},
+            {"target": "envios-client", "type": "call"},
+            {"target": "usuario-client", "type": "call"}
+          ]},
+        {"id": "calculo-totales", "type": "utilityService", "name": "CartTotalsCalculator", "description": "Calcula subtotal, descuentos e impuestos del carrito con los precios vigentes. Lo comparten los tres casos de uso.", "props": {"layer": "domain", "responsibility": "Totales del carrito"},
+          "dependencies": [
+            {"target": "precios-client", "type": "call"}
+          ]},
+        {"id": "carrito-client", "type": "serviceGateway", "name": "CartsClient", "props": {"port": "Carts"},
+          "dependencies": [
+            {"target": "api-carrito", "type": "config", "label": "REST"}
+          ]},
+        {"id": "precios-client", "type": "serviceGateway", "name": "PricesClient", "props": {"port": "PriceList"},
+          "dependencies": [
+            {"target": "api-precios", "type": "config", "label": "REST"}
+          ]},
+        {"id": "stock-client", "type": "serviceGateway", "name": "StockClient", "props": {"port": "StockAvailability"},
+          "dependencies": [
+            {"target": "api-stock", "type": "config", "label": "REST"}
+          ]},
+        {"id": "pagos-client", "type": "serviceGateway", "name": "PaymentsClient", "props": {"port": "Payments"},
+          "dependencies": [
+            {"target": "api-pagos", "type": "config", "label": "REST"}
+          ]},
+        {"id": "envios-client", "type": "serviceGateway", "name": "ShipmentsClient", "props": {"port": "Shipments"},
+          "dependencies": [
+            {"target": "api-envios", "type": "config", "label": "REST"}
+          ]},
+        {"id": "carrito-repo", "type": "dataGateway", "name": "CartSessionRepository", "props": {"port": "CartSession", "client": "Spring Data MongoDB", "entity": "CartSession", "store": "cart_sessions"},
+          "dependencies": [
+            {"target": "mongo", "type": "config", "technology": "MongoDB driver"}
+          ]},
+        {"id": "usuario-client", "type": "serviceGateway", "name": "UserDataClient", "props": {"port": "UserProfile"},
+          "dependencies": [
+            {"target": "datos-usuario/consultar-perfil", "type": "call", "label": "REST"}
+          ]}
+      ]}
+  ]
+}
