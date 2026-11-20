@@ -109,7 +109,11 @@ export function useDiagramNavigation(repo: Repository | null) {
    * estén en subcarpetas. El catálogo puede repartirse en varios ficheros con `include`.
    * Se lee una vez por carpeta (y de nuevo al recargar).
    */
+  /** Destino del progreso del catálogo en curso: lo fija cada carga (el catálogo se comparte entre cargas) */
+  const catalogProgress = React.useRef<((p: LoadProgress) => void) | null>(null);
   const catalogCache = React.useRef(new Map<string, Promise<{ index: CatalogIndex | null; error?: string; warnings?: string[] }>>());
+  /** Catálogos que se están descargando: al cancelar se cortan y salen de la caché */
+  const catalogLoads = React.useRef(new Map<string, AbortController>());
   React.useEffect(() => {
     catalogCache.current.clear();
   }, [repo]);
@@ -117,14 +121,16 @@ export function useDiagramNavigation(repo: Repository | null) {
     (path: string) => {
       let cached = catalogCache.current.get(path);
       if (!cached) {
+        const ctrl = new AbortController();
+        catalogLoads.current.set(path, ctrl);
         cached = (async () => {
           try {
-            const { catalog, warnings } = await loadCatalog(repo!, path, (progress) =>
-              setState((s) => (s.loading ? { ...s, progress } : s)),
-            );
+            const { catalog, warnings } = await loadCatalog(repo!, path, (p) => catalogProgress.current?.(p), ctrl.signal);
             return { index: new CatalogIndex(catalog), warnings };
           } catch (e: any) {
             return { index: null, error: e instanceof FileNotFoundError ? `No existe ${path}` : (e?.message ?? String(e)) };
+          } finally {
+            if (catalogLoads.current.get(path) === ctrl) catalogLoads.current.delete(path);
           }
         })();
         catalogCache.current.set(path, cached);
@@ -138,16 +144,30 @@ export function useDiagramNavigation(repo: Repository | null) {
     async (file: string, stack: NavEntry[], history: History, restore: Restore = {}, fresh = false): Promise<LoadResult> => {
       if (!repo || !stack.length) return 'stale';
       const req = ++request.current;
-      setState((s) => ({ ...s, loading: true, progress: null }));
+      // Progreso conjunto: el fichero del diagrama más el catálogo y sus includes
+      let diagramDone = 0;
+      let catalog: LoadProgress = { done: 0, total: 0 };
+      const report = () => {
+        if (req !== request.current) return;
+        const progress = { done: diagramDone + catalog.done, total: 1 + catalog.total };
+        setState((s) => ({ ...s, loading: true, progress }));
+      };
+      catalogProgress.current = (p) => {
+        catalog = p;
+        report();
+      };
+      report();
       try {
         const model = await readModel(stack[stack.length - 1].path);
+        diagramDone = 1;
+        report();
         const catalogPath = dirOf(stack[0].path) + CATALOG_FILE;
         if (fresh) catalogCache.current.delete(catalogPath);
-        const { index: catalog, error: catalogError, warnings: catalogWarnings = [] } = usesCatalog(model)
+        const { index: catalogIndex, error: catalogError, warnings: catalogWarnings = [] } = usesCatalog(model)
           ? await readCatalog(catalogPath)
           : { index: null };
         if (req !== request.current) return 'stale';
-        const view = resolveDiagram(model, catalog);
+        const view = resolveDiagram(model, catalogIndex);
         // Diagramas generados (detalle de un nodo): su título sale del catálogo
         const current = stack[stack.length - 1].path;
         if (view.title && !titles.current.has(current)) titles.current.set(current, view.title);
@@ -156,7 +176,7 @@ export function useDiagramNavigation(repo: Repository | null) {
           const diagrams = stack.slice(1).map((e) => toUrlPath(stack[0].path, e.path));
           writeUrl({ file, diagrams, sel: restore.sel, vp: restore.vp }, history);
         }
-        setState((s) => ({ file, stack, model, view, catalog, restore, loadId: s.loadId + 1, loading: false, progress: null, error: null }));
+        setState((s) => ({ file, stack, model, view, catalog: catalogIndex, restore, loadId: s.loadId + 1, loading: false, progress: null, error: null }));
         // Títulos de los diagramas padre que no se han cargado (al entrar por un enlace)
         for (const e of stack.slice(0, -1)) {
           if (e.title || titles.current.has(e.path)) continue;
@@ -173,6 +193,31 @@ export function useDiagramNavigation(repo: Repository | null) {
     },
     [repo, readModel, readCatalog],
   );
+
+  /**
+   * Cancela la carga en curso: deja de descargar el catálogo y se queda en lo que se estaba
+   * viendo (el árbol, si aún no había ningún diagrama). Si la URL ya apuntaba al destino
+   * (atrás/adelante del navegador, enlace directo), se devuelve a lo que se ve.
+   */
+  const cancel = React.useCallback(() => {
+    request.current++;
+    for (const [path, ctrl] of catalogLoads.current) {
+      ctrl.abort();
+      catalogCache.current.delete(path);
+    }
+    catalogLoads.current.clear();
+    const { file, stack, restore } = stateRef.current;
+    if (!file || !stack.length) {
+      if (readUrl().file) writeUrl({ diagrams: [] }, 'replace');
+    } else {
+      const diagrams = stack.slice(1).map((e) => toUrlPath(stack[0].path, e.path));
+      const url = readUrl();
+      if (url.file !== file || url.diagrams.join('|') !== diagrams.join('|')) {
+        writeUrl({ file, diagrams, sel: restore.sel, vp: restore.vp }, 'replace');
+      }
+    }
+    setState((s) => ({ ...s, loading: false, progress: null }));
+  }, []);
 
   /** Muestra el árbol de diagramas */
   const showTree = React.useCallback((history: History) => {
@@ -281,6 +326,7 @@ export function useDiagramNavigation(repo: Repository | null) {
     back,
     reload,
     clearError,
+    cancel,
     labelOf,
   };
 }

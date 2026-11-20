@@ -22,13 +22,18 @@ const CONCURRENCY = 4;
  * Los ficheros se descargan primero, hasta {@link CONCURRENCY} a la vez, según se van
  * descubriendo sus includes (`onProgress` informa de cada paso); después se ensamblan en el
  * orden de arriba, así que el resultado no depende de qué descarga termine antes.
+ *
+ * Con `signal` abortado no se empiezan más descargas y se lanza un `AbortError` (las que ya
+ * estaban en curso terminan, pero se descartan).
  */
 export async function loadCatalog(
   repo: Repository,
   path: string,
   onProgress?: (p: LoadProgress) => void,
+  signal?: AbortSignal,
 ): Promise<{ catalog: CatalogModel; warnings: string[] }> {
-  const files = await fetchAll(repo, path, onProgress);
+  const files = await fetchAll(repo, path, onProgress, signal);
+  signal?.throwIfAborted();
   const rootResult = files.get(path)!;
   if ('error' in rootResult) throw rootResult.error;
   const root = rootResult.model;
@@ -96,7 +101,7 @@ type Fetched = { model: CatalogModel } | { error: any };
  * Descarga el fichero raíz y todos los que alcanza por `include`, con un máximo de
  * {@link CONCURRENCY} descargas en curso. Si falla el raíz no se sigue.
  */
-async function fetchAll(repo: Repository, root: string, onProgress?: (p: LoadProgress) => void) {
+async function fetchAll(repo: Repository, root: string, onProgress?: (p: LoadProgress) => void, signal?: AbortSignal) {
   const results = new Map<string, Fetched>();
   /** Rutas ya descubiertas (descargadas, en curso o en cola) */
   const seen = new Set<string>([root]);
@@ -117,7 +122,10 @@ async function fetchAll(repo: Repository, root: string, onProgress?: (p: LoadPro
   };
 
   await new Promise<void>((resolve) => {
+    // Al cancelar se deja de esperar: lo que quede en curso se descarta
+    signal?.addEventListener('abort', () => resolve(), { once: true });
     const pump = () => {
+      if (signal?.aborted) return;
       while (running < CONCURRENCY && queue.length) {
         const file = queue.shift()!;
         running++;

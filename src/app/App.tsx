@@ -150,9 +150,12 @@ export default function App() {
 
   // Retroceso: al diagrama padre o, desde el raíz, al árbol
   const { back } = nav;
+  // Mientras carga, el diálogo bloquea la pantalla: Retroceso no navega
+  const navLoading = React.useRef(nav.loading);
+  navLoading.current = nav.loading;
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Backspace' || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable], .dv-modal')) return;
+      if (e.key !== 'Backspace' || navLoading.current || (e.target as HTMLElement).closest('input, textarea, select, [contenteditable], .dv-modal')) return;
       e.preventDefault();
       back();
     };
@@ -201,7 +204,6 @@ export default function App() {
           onOpen={nav.selectFile}
           actions={actions(false)}
         />
-        <LoadingOverlay show={nav.loading} progress={nav.progress} />
       </>
     );
   } else if (!nav.view) {
@@ -219,9 +221,7 @@ export default function App() {
           </>
         }
       />
-    ) : (
-      <LoadingOverlay show />
-    );
+    ) : null;
   } else {
     const current = nav.stack[nav.stack.length - 1];
     body = (
@@ -299,7 +299,6 @@ export default function App() {
             }}
           />
         )}
-        <LoadingOverlay show={nav.loading} progress={nav.progress} />
         {(nav.error || notice?.loadId === nav.loadId) && (
           <ErrorBanner
             message={(nav.error ?? notice?.message)!}
@@ -317,6 +316,15 @@ export default function App() {
     <AppContext.Provider value={context}>
       <div ref={rootRef} className="dv-root">
         {body}
+        {/* Uno solo para todas las vistas: así sigue visible al pasar del árbol al diagrama */}
+        {storage && (
+          <LoadingOverlay
+            show={nav.loading || (!nav.view && !nav.error && !showingTree && !(gateOpen && Gate))}
+            label="Cargando diagrama…"
+            progress={nav.progress}
+            onCancel={nav.cancel}
+          />
+        )}
       </div>
     </AppContext.Provider>
   );

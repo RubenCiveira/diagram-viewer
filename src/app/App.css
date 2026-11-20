@@ -593,28 +593,58 @@ pre {
   background: rgba(255, 255, 255, 0.18);
   color: #fff;
 }
-.dv-loading {
+.dv-loading-backdrop {
   position: fixed;
-  z-index: 40;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 0;
+  /* Por encima de la pantalla de selección (.dv-gate), por debajo de los modales */
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 10, 20, 0.55);
+  animation: dv-fade-in 0.15s ease-out;
+}
+.dv-loading-closing {
+  pointer-events: none;
+  animation: dv-fade-out 0.35s ease-in forwards;
+}
+.dv-loading {
+  width: min(420px, 100%);
+  background: var(--dv-surface);
+  color: var(--dv-text);
+  border: 1px solid var(--dv-border);
+  border-radius: 14px;
+  box-shadow: var(--dv-shadow-lg);
+  padding: 22px 24px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.dv-loading-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  border-radius: 20px;
-  background: var(--dv-surface);
-  border: 1px solid var(--dv-border);
-  box-shadow: var(--dv-shadow);
-  font-size: 13px;
-  color: var(--dv-muted);
+  gap: 12px;
+}
+.dv-loading-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.dv-loading-head .dv-spinner {
+  width: 20px;
+  height: 20px;
+  border-width: 3px;
+}
+.dv-loading-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .dv-progress {
   position: relative;
-  width: 120px;
-  height: 4px;
-  border-radius: 2px;
+  display: block;
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
   background: var(--dv-border);
   overflow: hidden;
 }
@@ -624,9 +654,21 @@ pre {
   background: var(--dv-accent);
   transition: width 0.15s ease-out;
 }
-.dv-progress-count {
+.dv-loading-done {
+  color: var(--dv-accent);
+}
+.dv-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--dv-muted);
   font-variant-numeric: tabular-nums;
-  min-width: 3.5em;
+}
+@keyframes dv-fade-in {
+  from { opacity: 0; }
+}
+@keyframes dv-fade-out {
+  to { opacity: 0; }
 }
 .dv-spinner {
   width: 14px;
